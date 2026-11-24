@@ -1,1 +1,8 @@
-export * from "./generated/api";
+export {
+  GetCourseQuestionsResponse,
+  GetCoursesResponse,
+  GetTopicDifficultyResponse,
+  HealthCheckResponse,
+  RecordLearningResponsesBody,
+} from "./generated/api";
+export * from "./generated/types";

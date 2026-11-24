@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useGetCourses,
   useGetCourseQuestions,
+  useGetTopicDifficulty,
+  customFetch,
   type Course as ApiCourse,
   type Question,
 } from '@stem-smartstudy/api-client-react';
@@ -51,6 +53,9 @@ export default function SmartStudyDashboard() {
   const [sampleNotice, setSampleNotice] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<Array<{ questionId: string; selectedOption: string; confidence: Confidence }>>([]);
+  const [deviceId] = useState(() => `device-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   const topInset =
     Platform.OS === 'web' ? Math.max(67, insets.top) : insets.top;
@@ -73,6 +78,8 @@ export default function SmartStudyDashboard() {
     const result = await questionQuery.refetch();
     if (result.data?.questions.length) {
       setQuizQuestions(result.data.questions);
+      setQuestionIndex(0);
+      setQuizAnswers([]);
       setQuizStage('question');
       setSelectedOption(null);
       setConfidence(null);
@@ -87,6 +94,8 @@ export default function SmartStudyDashboard() {
     setSelectedOption(null);
     setConfidence(null);
     setSampleNotice('');
+    setQuestionIndex(0);
+    setQuizAnswers([]);
     setActiveTab('quiz');
   };
 
@@ -218,13 +227,36 @@ export default function SmartStudyDashboard() {
             onConfidence={setConfidence}
             sampleNotice={sampleNotice}
             onStart={startQuiz}
-            question={quizQuestions[0]}
+            question={quizQuestions[questionIndex]}
+            questionIndex={questionIndex}
+            totalQuestions={quizQuestions.length}
+            quizQuestions={quizQuestions}
+            quizAnswers={quizAnswers}
             loadingQuestions={questionQuery.isFetching}
-            onSubmit={() => setQuizStage('submitted')}
+            onSubmit={() => {
+              const question = quizQuestions[questionIndex];
+              if (!question || !selectedOption || !confidence) return;
+              const answers = [...quizAnswers, { questionId: question.id, selectedOption, confidence }];
+              setQuizAnswers(answers);
+              if (questionIndex + 1 < quizQuestions.length) {
+                setQuestionIndex(questionIndex + 1);
+                setSelectedOption(null);
+                setConfidence(null);
+              } else {
+                void customFetch('/api/learning/responses', {
+                  method: 'POST',
+                  body: JSON.stringify({ deviceId, responses: answers }),
+                  responseType: 'json',
+                });
+                setQuizStage('submitted');
+              }
+            }}
             onReset={() => {
               setQuizStage('setup');
               setSelectedOption(null);
               setConfidence(null);
+              setQuestionIndex(0);
+              setQuizAnswers([]);
             }}
           />
         ) : (
@@ -542,6 +574,10 @@ function QuizScreen({
   sampleNotice,
   onStart,
   question,
+  questionIndex,
+  totalQuestions,
+  quizQuestions,
+  quizAnswers,
   loadingQuestions,
   onSubmit,
   onReset,
@@ -560,10 +596,17 @@ function QuizScreen({
   sampleNotice: string;
   onStart: () => void | Promise<void>;
   question?: Question;
+  questionIndex: number;
+  totalQuestions: number;
+  quizQuestions: Question[];
+  quizAnswers: Array<{ questionId: string; selectedOption: string; confidence: Confidence }>;
   loadingQuestions: boolean;
   onSubmit: () => void;
   onReset: () => void;
 }) {
+  const correctAnswers = quizAnswers.filter((answer) =>
+    quizQuestions.find((item) => item.id === answer.questionId)?.correctOption === answer.selectedOption,
+  ).length;
   return (
     <View style={styles.page}>
       <View style={styles.pageHeading}>
@@ -574,15 +617,15 @@ function QuizScreen({
           {stage === 'setup'
             ? 'Check your understanding.'
             : stage === 'question'
-              ? 'Question 1'
-              : 'Response preview'}
+              ? `Question ${questionIndex + 1} of ${totalQuestions}`
+              : 'Your diagnostic review'}
         </Text>
         <Text style={[styles.subtitle, { color: colors.softInk }]}>
           {stage === 'setup'
             ? 'Your answers, time and confidence help surface difficult topics.'
             : stage === 'question'
               ? 'Choose one answer, then rate how confident you feel.'
-              : 'Answer the question and rate your confidence.'}
+              : 'Review your score and the topics to focus on next.'}
         </Text>
       </View>
 
@@ -701,7 +744,7 @@ function QuizScreen({
           <View style={styles.questionMeta}>
             <View style={[styles.questionNumber, { backgroundColor: colors.paleBlue }]}>
               <Text style={[styles.questionNumberText, { color: colors.primary }]}>
-                01
+                {String(questionIndex + 1).padStart(2, '0')}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
@@ -820,7 +863,7 @@ function QuizScreen({
             ]}
           >
             <Text style={[styles.primaryButtonText, { color: colors.white }]}>
-              Preview response
+              {questionIndex + 1 === totalQuestions ? 'Finish diagnostic' : 'Next question'}
             </Text>
             <Ionicons name="arrow-forward" size={16} color={colors.white} />
           </Pressable>
@@ -836,16 +879,28 @@ function QuizScreen({
             <Ionicons name="checkmark" size={24} color={colors.teal} />
           </View>
           <Text style={[styles.submittedTitle, { color: colors.ink }]}>
-            Preview response ready
+            Diagnostic complete
           </Text>
           <Text style={[styles.submittedCopy, { color: colors.softInk }]}>
-            Choice {selectedOption} · Confidence {confidence}
+            You scored {correctAnswers} out of {totalQuestions}.
           </Text>
-          <View style={[styles.responseNote, { backgroundColor: colors.paleBlue }]}>
-            <Ionicons name="cloud-outline" size={17} color={colors.primary} />
-            <Text style={[styles.responseNoteText, { color: colors.ink }]}>
-              A connected API will record the response and determine correctness after submission.
-            </Text>
+          <Text style={[styles.responseNoteText, { color: colors.softInk, marginTop: 12, textAlign: 'center' }]}>
+            Review the explanation and correct answer for each question below.
+          </Text>
+          <View style={{ width: '100%', gap: 10, marginTop: 18 }}>
+            {quizQuestions.map((item, index) => {
+              const answer = quizAnswers[index];
+              const correct = answer?.selectedOption === item.correctOption;
+              return (
+                <View key={item.id} style={[styles.responseNote, { backgroundColor: correct ? colors.paleTeal : colors.paleCoral }]}>
+                  <Ionicons name={correct ? 'checkmark-circle-outline' : 'close-circle-outline'} size={18} color={correct ? colors.teal : colors.coral} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.responseNoteText, { color: colors.ink }]}>Question {index + 1}: {correct ? 'Correct' : `Correct answer: ${item.correctOption}`}</Text>
+                    <Text style={[styles.exampleCaption, { color: colors.softInk }]}>{item.explanation}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
           <Pressable
             accessibilityRole="button"
@@ -859,7 +914,7 @@ function QuizScreen({
           >
             <Ionicons name="refresh-outline" size={17} color={colors.primary} />
             <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
-              Start another preview
+              Start another diagnostic
             </Text>
           </Pressable>
         </View>
@@ -879,6 +934,8 @@ function InsightsScreen({
   selectedCourse: CourseName;
   onStartQuiz: () => void;
 }) {
+  const topicDifficultyQuery = useGetTopicDifficulty({ query: { retry: 1 } });
+  const topics = topicDifficultyQuery.data?.topics ?? [];
   return (
     <View style={styles.page}>
       <View style={styles.pageHeading}>
@@ -889,7 +946,7 @@ function InsightsScreen({
           Make sense of the hard parts.
         </Text>
         <Text style={[styles.subtitle, { color: colors.softInk }]}>
-          Topic difficulty uses accuracy, response time and confidence.
+          See which topics need the most attention based on completed diagnostics.
         </Text>
       </View>
 
@@ -908,27 +965,37 @@ function InsightsScreen({
               Topic difficulty
             </Text>
             <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-              Scores range from 0.00 to 1.00
+              Lowest accuracy appears first
             </Text>
           </View>
         </View>
 
-        <DifficultyScale colors={colors} />
-        <DifficultyExample
-          colors={colors}
-          courses={courses}
-          courseName={selectedCourse}
-          compact
-        />
+        {topicDifficultyQuery.isPending ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
+        ) : topics.length ? (
+          <View style={styles.scaleList}>
+            {topics.slice(0, 5).map((topic) => (
+              <View key={topic.topic} style={[styles.scaleRow, { backgroundColor: colors.secondary }]}>
+                <View style={[styles.scaleDot, { backgroundColor: topic.accuracy < 0.5 ? colors.coral : colors.teal }]} />
+                <Text style={[styles.scaleName, { color: colors.ink }]}>{topic.topic}</Text>
+                <Text style={[styles.scaleRange, { color: colors.softInk }]}>
+                  {topic.attempts ? `${Math.round(topic.accuracy * 100)}% accuracy` : 'No attempts yet'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>Complete a diagnostic to see topic insights.</Text>
+        )}
       </View>
 
       <View style={styles.sectionHeader}>
         <View>
           <Text style={[styles.sectionTitle, { color: colors.ink }]}>
-            Most missed questions
+            Learning progress
           </Text>
           <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-            Ranked from course response data
+            Your completed diagnostics improve the topic ranking.
           </Text>
         </View>
         <View style={[styles.smallIconBox, { backgroundColor: colors.paleCoral }]}>
@@ -943,10 +1010,10 @@ function InsightsScreen({
       >
         <Ionicons name="bar-chart-outline" size={20} color={colors.quiet} />
         <Text style={[styles.emptyTitle, { color: colors.ink }]}>
-          Course analytics will appear here
+          {topics.some((topic) => topic.attempts > 0) ? 'Topic data is updating' : 'No diagnostic data yet'}
         </Text>
         <Text style={[styles.emptyCopy, { color: colors.softInk }]}>
-          Most-missed questions need response data from a course.
+          {topics.some((topic) => topic.attempts > 0) ? 'Keep practicing to improve your weak-topic recommendations.' : 'Complete a diagnostic to see your first recommendation.'}
         </Text>
       </View>
 
@@ -964,7 +1031,7 @@ function InsightsScreen({
             Your recommendations
           </Text>
           <Text style={[styles.recommendationText, { color: colors.softInk }]}>
-            Complete a diagnostic first. The API returns personal suggestions when results are available.
+            Complete a diagnostic, then focus your next session on the topics with the lowest accuracy.
           </Text>
           <Pressable
             accessibilityRole="button"

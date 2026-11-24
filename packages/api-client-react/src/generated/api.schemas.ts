@@ -36,6 +36,27 @@ export interface QuestionCatalog {
   questions: Question[];
 }
 
+export type LearningResponseRequestResponsesItem = {
+  questionId: string;
+  selectedOption: string;
+  confidence: string;
+};
+
+export interface LearningResponseRequest {
+  deviceId: string;
+  responses: LearningResponseRequestResponsesItem[];
+}
+
+export interface TopicDifficulty {
+  topic: string;
+  attempts: number;
+  accuracy: number;
+}
+
+export interface TopicDifficultyCatalog {
+  topics: TopicDifficulty[];
+}
+
 export type GetCourseQuestionsParams = {
 /**
  * @minimum 1

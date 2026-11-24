@@ -60,3 +60,30 @@ export const GetCourseQuestionsResponse = zod.object({
 })
 
 
+/**
+ * @summary Record anonymous diagnostic responses
+ */
+export const RecordLearningResponsesBody = zod.object({
+  "deviceId": zod.string(),
+  "responses": zod.array(zod.object({
+  "questionId": zod.string(),
+  "selectedOption": zod.string(),
+  "confidence": zod.string()
+}))
+})
+
+export const RecordLearningResponsesResponse = zod.void()
+
+
+/**
+ * @summary Rank topics using anonymized response accuracy
+ */
+export const GetTopicDifficultyResponse = zod.object({
+  "topics": zod.array(zod.object({
+  "topic": zod.string(),
+  "attempts": zod.int(),
+  "accuracy": zod.number()
+}))
+})
+
+

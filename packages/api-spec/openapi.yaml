@@ -52,6 +52,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/QuestionCatalog"
+  /learning/responses:
+    post:
+      operationId: recordLearningResponses
+      summary: Record anonymous diagnostic responses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearningResponseRequest"
+      responses:
+        "201":
+          description: Responses recorded
+  /learning/topic-difficulty:
+    get:
+      operationId: getTopicDifficulty
+      summary: Rank topics using anonymized response accuracy
+      responses:
+        "200":
+          description: Topic difficulty ranking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicDifficultyCatalog"
 components:
   schemas:
     HealthStatus:
@@ -112,3 +136,39 @@ components:
           items:
             $ref: "#/components/schemas/Question"
       required: [questions]
+    LearningResponseRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        responses:
+          type: array
+          items:
+            type: object
+            properties:
+              questionId:
+                type: string
+              selectedOption:
+                type: string
+              confidence:
+                type: string
+            required: [questionId, selectedOption, confidence]
+      required: [deviceId, responses]
+    TopicDifficulty:
+      type: object
+      properties:
+        topic:
+          type: string
+        attempts:
+          type: integer
+        accuracy:
+          type: number
+      required: [topic, attempts, accuracy]
+    TopicDifficultyCatalog:
+      type: object
+      properties:
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopicDifficulty"
+      required: [topics]

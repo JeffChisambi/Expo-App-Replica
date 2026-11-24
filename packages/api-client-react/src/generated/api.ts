@@ -6,16 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -24,11 +28,13 @@ import type {
   CourseCatalog,
   GetCourseQuestionsParams,
   HealthStatus,
-  QuestionCatalog
+  LearningResponseRequest,
+  QuestionCatalog,
+  TopicDifficultyCatalog
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -360,6 +366,195 @@ export function useGetCourseQuestions<TData = Awaited<ReturnType<typeof getCours
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCourseQuestionsQueryOptions(courseId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordLearningResponsesUrl = () => {
+
+
+
+
+  return `/api/learning/responses`
+}
+
+/**
+ * @summary Record anonymous diagnostic responses
+ */
+export const recordLearningResponses = async (learningResponseRequest: LearningResponseRequest, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getRecordLearningResponsesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningResponseRequest)
+  }
+);}
+
+
+
+
+
+export const getRecordLearningResponsesMutationKey = () => ['recordLearningResponses'] as const;
+
+export const getRecordLearningResponsesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLearningResponses>>, TError,RecordLearningResponsesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordLearningResponses>>, TError,RecordLearningResponsesMutationVariables, TContext> => {
+
+const mutationKey = getRecordLearningResponsesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordLearningResponses>>, RecordLearningResponsesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordLearningResponses(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordLearningResponsesMutationResult = NonNullable<Awaited<ReturnType<typeof recordLearningResponses>>>
+    export type RecordLearningResponsesMutationBody = BodyType<LearningResponseRequest>
+    export type RecordLearningResponsesMutationError = ErrorType<unknown>
+    export type RecordLearningResponsesMutationVariables = {data: BodyType<LearningResponseRequest>}
+
+    /**
+ * @summary Record anonymous diagnostic responses
+ */
+export const useRecordLearningResponses = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLearningResponses>>, TError,RecordLearningResponsesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recordLearningResponses>>,
+        TError,
+        RecordLearningResponsesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordLearningResponsesMutationOptions(options), queryClient);
+    }
+
+export const getGetTopicDifficultyUrl = () => {
+
+
+
+
+  return `/api/learning/topic-difficulty`
+}
+
+/**
+ * @summary Rank topics using anonymized response accuracy
+ */
+export const getTopicDifficulty = async ( options?: Parameters<typeof customFetch>[1]): Promise<TopicDifficultyCatalog> => {
+
+  return customFetch<TopicDifficultyCatalog>(getGetTopicDifficultyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTopicDifficultyQueryKey = () => {
+    return [
+    `/api/learning/topic-difficulty`
+    ] as const;
+    }
+
+
+export const getGetTopicDifficultyQueryOptions = <TData = Awaited<ReturnType<typeof getTopicDifficulty>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTopicDifficultyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopicDifficulty>>> = ({ signal }) => getTopicDifficulty({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTopicDifficultyQueryResult = NonNullable<Awaited<ReturnType<typeof getTopicDifficulty>>>
+export type GetTopicDifficultyQueryError = ErrorType<unknown>
+
+
+export function useGetTopicDifficulty<TData = Awaited<ReturnType<typeof getTopicDifficulty>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTopicDifficulty>>,
+          TError,
+          Awaited<ReturnType<typeof getTopicDifficulty>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTopicDifficulty<TData = Awaited<ReturnType<typeof getTopicDifficulty>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTopicDifficulty>>,
+          TError,
+          Awaited<ReturnType<typeof getTopicDifficulty>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTopicDifficulty<TData = Awaited<ReturnType<typeof getTopicDifficulty>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Rank topics using anonymized response accuracy
+ */
+
+export function useGetTopicDifficulty<TData = Awaited<ReturnType<typeof getTopicDifficulty>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTopicDifficulty>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTopicDifficultyQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
