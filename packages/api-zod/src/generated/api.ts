@@ -64,7 +64,6 @@ export const GetCourseQuestionsResponse = zod.object({
  * @summary Record anonymous diagnostic responses
  */
 export const RecordLearningResponsesBody = zod.object({
-  "deviceId": zod.string(),
   "responses": zod.array(zod.object({
   "questionId": zod.string(),
   "selectedOption": zod.string(),

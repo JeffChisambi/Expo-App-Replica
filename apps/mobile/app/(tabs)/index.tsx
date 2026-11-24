@@ -55,7 +55,6 @@ export default function SmartStudyDashboard() {
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Array<{ questionId: string; selectedOption: string; confidence: Confidence }>>([]);
-  const [deviceId] = useState(() => `device-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   const topInset =
     Platform.OS === 'web' ? Math.max(67, insets.top) : insets.top;
@@ -245,7 +244,7 @@ export default function SmartStudyDashboard() {
               } else {
                 void customFetch('/api/learning/responses', {
                   method: 'POST',
-                  body: JSON.stringify({ deviceId, responses: answers }),
+                  body: JSON.stringify({ responses: answers }),
                   responseType: 'json',
                 });
                 setQuizStage('submitted');

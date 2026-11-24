@@ -1,5 +1,4 @@
 export {
-  GetCourseQuestionsResponse,
   GetCoursesResponse,
   GetTopicDifficultyResponse,
   HealthCheckResponse,

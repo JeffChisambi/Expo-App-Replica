@@ -43,7 +43,6 @@ export type LearningResponseRequestResponsesItem = {
 };
 
 export interface LearningResponseRequest {
-  deviceId: string;
   responses: LearningResponseRequestResponsesItem[];
 }
 

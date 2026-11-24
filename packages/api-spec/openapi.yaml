@@ -139,8 +139,6 @@ components:
     LearningResponseRequest:
       type: object
       properties:
-        deviceId:
-          type: string
         responses:
           type: array
           items:
@@ -153,7 +151,7 @@ components:
               confidence:
                 type: string
             required: [questionId, selectedOption, confidence]
-      required: [deviceId, responses]
+      required: [responses]
     TopicDifficulty:
       type: object
       properties:

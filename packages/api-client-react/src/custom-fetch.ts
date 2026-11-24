@@ -14,6 +14,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // ---------------------------------------------------------------------------
 
 let _baseUrl: string | null = null;
+let _authToken: string | null = null;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -25,6 +26,8 @@ let _baseUrl: string | null = null;
 export function setBaseUrl(url: string | null): void {
   _baseUrl = url ? url.replace(/\/+$/, "") : null;
 }
+
+export function setAuthToken(token: string | null): void { _authToken = token; }
 
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
@@ -318,6 +321,7 @@ export async function customFetch<T = unknown>(
   }
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  if (_authToken && !headers.has("authorization")) headers.set("authorization", `Bearer ${_authToken}`);
 
   if (
     typeof init.body === "string" &&

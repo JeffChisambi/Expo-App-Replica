@@ -2,7 +2,7 @@ import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/
 
 export const quizResponsesTable = pgTable("quiz_responses", {
   id: serial("id").primaryKey(),
-  deviceId: text("device_id").notNull(),
+  studentId: text("student_id").notNull(),
   questionId: text("question_id").notNull(),
   selectedOption: text("selected_option").notNull(),
   isCorrect: boolean("is_correct").notNull(),

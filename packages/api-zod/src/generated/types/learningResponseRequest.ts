@@ -8,6 +8,5 @@
 import type { LearningResponseRequestResponsesItem } from './learningResponseRequestResponsesItem';
 
 export interface LearningResponseRequest {
-  deviceId: string;
   responses: LearningResponseRequestResponsesItem[];
 }
