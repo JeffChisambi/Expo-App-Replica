@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 
@@ -194,14 +195,14 @@ export default function SmartStudyDashboard() {
       >
         <NavigationButton
           label="Home"
-          icon="home-outline"
+          icon="home-custom"
           active={activeTab === 'home'}
           colors={colors}
           onPress={() => setActiveTab('home')}
         />
         <NavigationButton
           label="Courses"
-          icon="book-outline"
+          icon="course-book-custom"
           active={activeTab === 'courses'}
           colors={colors}
           onPress={() => setActiveTab('courses')}
@@ -1214,7 +1215,7 @@ function NavigationButton({
   onPress,
 }: {
   label: string;
-  icon: IoniconName;
+  icon: IoniconName | 'home-custom' | 'course-book-custom';
   active: boolean;
   colors: ReturnType<typeof useColors>;
   onPress: () => void;
@@ -1228,11 +1229,23 @@ function NavigationButton({
       onPress={onPress}
       style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
     >
-      <Ionicons
-        name={icon}
-        size={21}
-        color={active ? colors.primary : colors.quiet}
-      />
+      {icon === 'home-custom' ? (
+        <HomeGlyph
+          size={22}
+          color={active ? colors.primary : colors.quiet}
+        />
+      ) : icon === 'course-book-custom' ? (
+        <CourseBookGlyph
+          size={22}
+          color={active ? colors.primary : colors.quiet}
+        />
+      ) : (
+        <Ionicons
+          name={icon}
+          size={21}
+          color={active ? colors.primary : colors.quiet}
+        />
+      )}
       <Text
         style={[
           styles.navLabel,
@@ -1245,6 +1258,52 @@ function NavigationButton({
         <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
       ) : null}
     </Pressable>
+  );
+}
+
+function CourseBookGlyph({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+      <Path
+        d="M11 3.99995C12.8839 2.91716 14.9355 2.15669 17.07 1.74995C17.551 1.63467 18.0523 1.63283 18.5341 1.74458C19.016 1.85632 19.4652 2.07852 19.8464 2.39375C20.2276 2.70897 20.5303 3.10856 20.7305 3.56086C20.9307 4.01316 21.0229 4.50585 21 4.99995V13.9999C20.9699 15.117 20.5666 16.1917 19.8542 17.0527C19.1419 17.9136 18.1617 18.5112 17.07 18.7499C14.9355 19.1567 12.8839 19.9172 11 20.9999"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M10.9995 3.99995C9.1156 2.91716 7.06409 2.15669 4.92957 1.74995C4.44856 1.63467 3.94731 1.63283 3.46546 1.74458C2.98362 1.85632 2.53439 2.07852 2.15321 2.39375C1.77203 2.70897 1.46933 3.10856 1.26911 3.56086C1.0689 4.01316 0.976598 4.50585 0.999521 4.99995V13.9999C1.0296 15.117 1.433 16.1917 2.14533 17.0527C2.85767 17.9136 3.83793 18.5112 4.92957 18.7499C7.06409 19.1567 9.1156 19.9172 10.9995 20.9999"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M11 21V4"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function HomeGlyph({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <Path
+        d="M9 16C9.85038 16.6303 10.8846 17 12 17C13.1154 17 14.1496 16.6303 15 16"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
