@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useClerk, useUser } from '@clerk/expo';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   Pressable,
@@ -13,25 +15,22 @@ import {
 } from 'react-native';
 import Svg, { Path, SvgXml } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGetCourses, type Course as ApiCourse } from '@workspace/api-client-react';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { officialLogoXml } from '@/constants/officialLogo';
 
 type TabKey = 'home' | 'courses' | 'quiz' | 'insights';
-type CourseName =
-  | 'Elementary Principles of Electricity'
-  | 'Programming'
-  | 'Operating Systems';
+type CourseName = string;
+type Course = ApiCourse & { icon: IoniconName };
 type Confidence = 'low' | 'medium' | 'high';
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const courses: { name: CourseName; icon: IoniconName }[] = [
-  {
-    name: 'Elementary Principles of Electricity',
-    icon: 'flash-outline',
-  },
-  { name: 'Programming', icon: 'code-slash-outline' },
-  { name: 'Operating Systems', icon: 'hardware-chip-outline' },
-];
+const courseIcons: Record<string, IoniconName> = {
+  'elementary-principles-of-electricity': 'flash-outline',
+  programming: 'code-slash-outline',
+  'operating-systems': 'hardware-chip-outline',
+};
 
 const sampleQuestion = {
   prompt: 'Course questions will appear here once content is available.',
@@ -41,6 +40,10 @@ const sampleQuestion = {
 export default function SmartStudyDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const coursesQuery = useGetCourses({ query: { retry: 1 } });
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedCourse, setSelectedCourse] =
     useState<CourseName>('Elementary Principles of Electricity');
@@ -58,9 +61,14 @@ export default function SmartStudyDashboard() {
   const bottomInset =
     Platform.OS === 'web' ? Math.max(34, insets.bottom) : insets.bottom;
 
+  const courses: Course[] = (coursesQuery.data?.courses ?? []).map((course) => ({
+    ...course,
+    icon: courseIcons[course.id] ?? 'book-outline',
+  }));
+
   const startQuiz = () => {
     setSampleNotice(
-      `Question sets for ${selectedCourse} will appear when course content is available.`,
+      `${selectedCourse} is the active course. Diagnostic questions will be added after its training content is prepared.`,
     );
   };
 
@@ -71,6 +79,56 @@ export default function SmartStudyDashboard() {
     setSampleNotice('');
     setActiveTab('quiz');
   };
+
+  if (coursesQuery.isPending) {
+    return (
+      <View
+        style={[
+          styles.screen,
+          styles.catalogMessage,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator color={colors.primary} />
+        <Text style={[styles.catalogMessageText, { color: colors.softInk }]}>
+          Loading your course catalog…
+        </Text>
+      </View>
+    );
+  }
+
+  if (coursesQuery.isError) {
+    return (
+      <View
+        style={[
+          styles.screen,
+          styles.catalogMessage,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text style={[styles.catalogErrorTitle, { color: colors.ink }]}>
+          The course catalog is unavailable.
+        </Text>
+        <Text style={[styles.catalogMessageText, { color: colors.softInk }]}>
+          Check your connection and try again.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          testID="retry-course-catalog"
+          onPress={() => void coursesQuery.refetch()}
+          style={({ pressed }) => [
+            styles.retryButton,
+            { backgroundColor: colors.primary },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={[styles.primaryButtonText, { color: colors.white }]}>
+            Try again
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -109,8 +167,13 @@ export default function SmartStudyDashboard() {
         {activeTab === 'home' ? (
           <HomeScreen
             colors={colors}
+            courses={courses}
             selectedCourse={selectedCourse}
-            onSelectCourse={setSelectedCourse}
+            onSelectCourse={(course) => {
+              if (courses.find((item) => item.name === course)?.isAvailable) {
+                setSelectedCourse(course);
+              }
+            }}
             onOpenCourses={() => setActiveTab('courses')}
             onStartQuiz={openQuizSetup}
             onOpenInsights={() => setActiveTab('insights')}
@@ -118,12 +181,18 @@ export default function SmartStudyDashboard() {
         ) : activeTab === 'courses' ? (
           <CoursesScreen
             colors={colors}
+            courses={courses}
             selectedCourse={selectedCourse}
-            onSelectCourse={setSelectedCourse}
+            onSelectCourse={(course) => {
+              if (courses.find((item) => item.name === course)?.isAvailable) {
+                setSelectedCourse(course);
+              }
+            }}
           />
         ) : activeTab === 'quiz' ? (
           <QuizScreen
             colors={colors}
+            courses={courses.filter((course) => course.isAvailable)}
             selectedCourse={selectedCourse}
             onSelectCourse={(course) => {
               setSelectedCourse(course);
@@ -148,6 +217,7 @@ export default function SmartStudyDashboard() {
         ) : (
           <InsightsScreen
             colors={colors}
+            courses={courses}
             selectedCourse={selectedCourse}
             onStartQuiz={openQuizSetup}
           />
@@ -197,7 +267,13 @@ export default function SmartStudyDashboard() {
       <ProfileModal
         visible={profileOpen}
         colors={colors}
+        studentEmail={user?.primaryEmailAddress?.emailAddress ?? ''}
         onClose={() => setProfileOpen(false)}
+        onSignOut={async () => {
+          setProfileOpen(false);
+          await signOut();
+          router.replace('/(auth)');
+        }}
       />
     </View>
   );
@@ -205,6 +281,7 @@ export default function SmartStudyDashboard() {
 
 function HomeScreen({
   colors,
+  courses,
   selectedCourse,
   onSelectCourse,
   onOpenCourses,
@@ -212,6 +289,7 @@ function HomeScreen({
   onOpenInsights,
 }: {
   colors: ReturnType<typeof useColors>;
+  courses: Course[];
   selectedCourse: CourseName;
   onSelectCourse: (course: CourseName) => void;
   onOpenCourses: () => void;
@@ -333,7 +411,11 @@ function HomeScreen({
         </Pressable>
       </View>
 
-      <DifficultyExample colors={colors} courseName={selectedCourse} />
+      <DifficultyExample
+        colors={colors}
+        courses={courses}
+        courseName={selectedCourse}
+      />
 
       <View
         style={[
@@ -369,10 +451,12 @@ function HomeScreen({
 
 function CoursesScreen({
   colors,
+  courses,
   selectedCourse,
   onSelectCourse,
 }: {
   colors: ReturnType<typeof useColors>;
+  courses: Course[];
   selectedCourse: CourseName;
   onSelectCourse: (course: CourseName) => void;
 }) {
@@ -391,7 +475,7 @@ function CoursesScreen({
       <View style={[styles.previewNotice, { backgroundColor: colors.paleAmber }]}>
         <Ionicons name="information-circle-outline" size={17} color={colors.amberInk} />
         <Text style={[styles.previewNoticeText, { color: colors.amberInk }]}>
-          These are the courses currently available.
+          Elementary Principles of Electricity is available. Other courses are coming soon.
         </Text>
       </View>
 
@@ -438,6 +522,7 @@ function CoursesScreen({
 
 function QuizScreen({
   colors,
+  courses,
   selectedCourse,
   onSelectCourse,
   questionCount,
@@ -453,6 +538,7 @@ function QuizScreen({
   onReset,
 }: {
   colors: ReturnType<typeof useColors>;
+  courses: Course[];
   selectedCourse: CourseName;
   onSelectCourse: (course: CourseName) => void;
   questionCount: number;
@@ -771,10 +857,12 @@ function QuizScreen({
 
 function InsightsScreen({
   colors,
+  courses,
   selectedCourse,
   onStartQuiz,
 }: {
   colors: ReturnType<typeof useColors>;
+  courses: Course[];
   selectedCourse: CourseName;
   onStartQuiz: () => void;
 }) {
@@ -815,6 +903,7 @@ function InsightsScreen({
         <DifficultyScale colors={colors} />
         <DifficultyExample
           colors={colors}
+          courses={courses}
           courseName={selectedCourse}
           compact
         />
@@ -882,10 +971,12 @@ function InsightsScreen({
 
 function DifficultyExample({
   colors,
+  courses,
   courseName,
   compact = false,
 }: {
   colors: ReturnType<typeof useColors>;
+  courses: Course[];
   courseName: CourseName;
   compact?: boolean;
 }) {
@@ -982,7 +1073,7 @@ function CourseChip({
   colors,
   onPress,
 }: {
-  course: { name: CourseName; icon: IoniconName };
+  course: Course;
   selected: boolean;
   colors: ReturnType<typeof useColors>;
   onPress: () => void;
@@ -990,15 +1081,21 @@ function CourseChip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`Select ${course.name}`}
+      accessibilityState={{ selected, disabled: !course.isAvailable }}
+      accessibilityLabel={
+        course.isAvailable
+          ? `Select ${course.name}`
+          : `${course.name}, coming soon`
+      }
       testID={`course-chip-${course.name.toLowerCase().replaceAll(' ', '-')}`}
       onPress={onPress}
+      disabled={!course.isAvailable}
       style={({ pressed }) => [
         styles.courseChip,
         {
           backgroundColor: selected ? colors.deep : colors.card,
           borderColor: selected ? colors.deep : colors.line,
+          opacity: course.isAvailable ? 1 : 0.55,
         },
         pressed && styles.pressed,
       ]}
@@ -1027,7 +1124,7 @@ function CourseCard({
   accentIndex,
   onPress,
 }: {
-  course: { name: CourseName; icon: IoniconName };
+  course: Course;
   selected: boolean;
   colors: ReturnType<typeof useColors>;
   accentIndex: number;
@@ -1050,14 +1147,16 @@ function CourseCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled: !course.isAvailable }}
       testID={`course-card-${course.name.toLowerCase().replaceAll(' ', '-')}`}
       onPress={onPress}
+      disabled={!course.isAvailable}
       style={({ pressed }) => [
         styles.courseCard,
         {
           backgroundColor: colors.card,
           borderColor: selected ? colors.primary : colors.line,
+          opacity: course.isAvailable ? 1 : 0.72,
         },
         pressed && styles.pressed,
       ]}
@@ -1078,7 +1177,7 @@ function CourseCard({
         {course.name}
       </Text>
       <Text style={[styles.courseMeta, { color: colors.softInk }]}>
-        STEM course
+        {course.isAvailable ? 'Available for study' : 'Coming soon'}
       </Text>
       <View style={styles.courseCardFooter}>
         <Text
@@ -1087,10 +1186,20 @@ function CourseCard({
             { color: selected ? colors.primary : colors.quiet },
           ]}
         >
-          {selected ? 'Selected' : 'Choose course'}
+          {selected
+            ? 'Selected'
+            : course.isAvailable
+              ? 'Choose course'
+              : 'Coming soon'}
         </Text>
         <Ionicons
-          name={selected ? 'checkmark-circle' : 'arrow-forward-circle-outline'}
+          name={
+            selected
+              ? 'checkmark-circle'
+              : course.isAvailable
+                ? 'arrow-forward-circle-outline'
+                : 'time-outline'
+          }
           size={18}
           color={selected ? colors.primary : colors.quiet}
         />
@@ -1318,11 +1427,15 @@ function ProfileGlyph({ size, color }: { size: number; color: string }) {
 function ProfileModal({
   visible,
   colors,
+  studentEmail,
   onClose,
+  onSignOut,
 }: {
   visible: boolean;
   colors: ReturnType<typeof useColors>;
+  studentEmail: string;
   onClose: () => void;
+  onSignOut: () => void;
 }) {
   return (
     <Modal
@@ -1360,10 +1473,10 @@ function ProfileModal({
             <ProfileGlyph size={30} color={colors.primary} />
           </View>
           <Text style={[styles.profileTitle, { color: colors.ink }]}>
-            Student view
+            Student account
           </Text>
           <Text style={[styles.profileCopy, { color: colors.softInk }]}>
-            Your personal quiz attempts and study recommendations belong to your account.
+            {studentEmail || 'Your signed-in student account'}
           </Text>
           <View style={[styles.roleBadge, { backgroundColor: colors.paleTeal }]}>
             <Ionicons name="school-outline" size={15} color={colors.teal} />
@@ -1371,6 +1484,21 @@ function ProfileModal({
               STUDENT
             </Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            testID="student-sign-out"
+            onPress={onSignOut}
+            style={({ pressed }) => [
+              styles.signOutButton,
+              { backgroundColor: colors.paleBlue },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="log-out-outline" size={17} color={colors.primary} />
+            <Text style={[styles.signOutText, { color: colors.primary }]}>
+              Sign out
+            </Text>
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
@@ -1537,6 +1665,33 @@ const styles = StyleSheet.create({
   courseChipText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 10,
+  },
+  catalogMessage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    gap: 12,
+  },
+  catalogMessageText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  catalogErrorTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 18,
+    lineHeight: 25,
+    textAlign: 'center',
+  },
+  retryButton: {
+    minHeight: 44,
+    minWidth: 130,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginTop: 4,
   },
   difficultyCard: {
     borderWidth: 1,
@@ -2111,6 +2266,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: 9,
     letterSpacing: 0.7,
+  },
+  signOutButton: {
+    width: '100%',
+    minHeight: 46,
+    borderRadius: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 18,
+  },
+  signOutText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
   },
   pressed: {
     opacity: 0.76,

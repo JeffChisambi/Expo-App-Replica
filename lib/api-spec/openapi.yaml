@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: students
+    description: Authenticated student accounts
+  - name: courses
+    description: Student course catalog
 paths:
   /healthz:
     get:
@@ -24,7 +28,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /students/me:
+    get:
+      operationId: getStudentProfile
+      tags: [students]
+      summary: Get or create the signed-in student profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The signed-in student's persisted profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+        "401":
+          description: Authentication is required
+  /courses:
+    get:
+      operationId: getCourses
+      tags: [courses]
+      summary: List courses and their availability
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Course catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCatalog"
+        "401":
+          description: Authentication is required
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +74,37 @@ components:
           type: string
       required:
         - status
+    StudentProfile:
+      type: object
+      properties:
+        studentId:
+          type: string
+        role:
+          type: string
+          enum: [student]
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+      required: [studentId, role, createdAt, lastSeenAt]
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        isAvailable:
+          type: boolean
+      required: [id, name, isAvailable]
+    CourseCatalog:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Course"
+      required: [courses]
 
