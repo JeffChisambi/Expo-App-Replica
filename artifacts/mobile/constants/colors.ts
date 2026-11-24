@@ -14,6 +14,7 @@
 
 const brandBlue = '#2080BD';
 const brandYellow = '#F2E51A';
+const mutedSlate = '#667A8A';
 const black = '#000000';
 const white = '#FFFFFF';
 
@@ -41,7 +42,7 @@ const colors = {
 
     // Muted / subdued elements (dividers, timestamps, placeholders)
     muted: white,
-    mutedForeground: '#000000A6',
+    mutedForeground: mutedSlate,
 
     // Accent highlights (badges, selected items, focus rings)
     accent: brandYellow,
@@ -57,8 +58,8 @@ const colors = {
 
     // STEM SmartStudy palette
     ink: black,
-    softInk: '#000000A6',
-    quiet: '#00000080',
+    softInk: mutedSlate,
+    quiet: mutedSlate,
     line: '#00000026',
     deep: brandBlue,
     heroStart: brandBlue,
@@ -67,12 +68,12 @@ const colors = {
     heroSoft: white,
     teal: brandBlue,
     amber: brandYellow,
-    amberInk: black,
+    amberInk: brandBlue,
     coral: brandBlue,
-    paleBlue: brandYellow,
-    paleTeal: brandYellow,
-    paleAmber: brandYellow,
-    paleCoral: brandYellow,
+    paleBlue: '#EAF4FA',
+    paleTeal: '#EAF6F4',
+    paleAmber: '#F1F5F8',
+    paleCoral: '#FCEFF0',
     bottomBar: white,
     white,
     scrim: '#00000080',

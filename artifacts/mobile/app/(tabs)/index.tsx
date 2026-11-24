@@ -1404,7 +1404,7 @@ function ProfileModal({
               pressed && styles.pressed,
             ]}
           >
-            <Ionicons name="close" size={18} color={colors.ink} />
+            <Ionicons name="close" size={18} color={colors.primary} />
           </Pressable>
           <View style={[styles.profileAvatar, { backgroundColor: colors.paleBlue }]}>
             <ProfileGlyph size={30} color={colors.primary} />
