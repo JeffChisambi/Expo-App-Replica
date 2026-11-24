@@ -4,7 +4,8 @@
   "packageManager": "pnpm@10.26.1",
   "license": "MIT",
   "scripts": {
-    "dev:api": "pnpm --filter @stem-smartstudy/api dev",
+    "dev:backend": "pnpm --filter @stem-smartstudy/api dev",
+    "dev:api": "pnpm run dev:backend",
     "dev:mobile": "pnpm --filter @stem-smartstudy/mobile start",
     "dev:web-preview": "pnpm --filter @stem-smartstudy/web-preview dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",

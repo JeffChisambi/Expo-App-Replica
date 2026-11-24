@@ -1,80 +1,128 @@
 # STEM SmartStudy
 
-STEM SmartStudy is a local-first Expo mobile application with an Express API, PostgreSQL database, and shared TypeScript packages. It has no Replit runtime requirements.
+STEM SmartStudy is an Expo mobile application backed by a separate Express API and PostgreSQL database. It runs locally with pnpm; Replit is not required.
 
-## Project layout
+## Repository structure
 
 ```
 apps/
-  api/               Express API (port 3001 by default)
-  mobile/            Expo Router application
-  web-preview/       Standalone Vite component-preview utility
+  api/                 Backend: Express, Clerk authentication, API routes
+  mobile/              Frontend: Expo Router mobile application
+  web-preview/         Optional Vite component-preview utility
 packages/
-  api-client-react/  Generated API hooks and fetch client
-  api-spec/          OpenAPI source and code-generation config
-  api-zod/           Shared API schemas
-  db/                Drizzle schema and seed script
+  api-client-react/    Generated React Query client used by the mobile app
+  api-spec/            OpenAPI contract and Orval generation config
+  api-zod/             Generated runtime response schemas shared by the backend
+  db/                  Drizzle PostgreSQL schema and seed script
 ```
 
-## Requirements
+The backend lives exclusively in `apps/api`. The mobile app calls it through `EXPO_PUBLIC_API_URL`; shared API types are generated from `packages/api-spec/openapi.yaml`.
+
+## Prerequisites
 
 - Node.js 22 or newer
-- pnpm 10 (`corepack enable` then `corepack prepare pnpm@10.26.1 --activate`)
+- pnpm 10 (`corepack enable`; then `corepack prepare pnpm@10.26.1 --activate`)
 - PostgreSQL 15 or newer
 - A Clerk application for sign-in and protected API routes
-- Expo Go on a physical device, or an Android/iOS simulator
+- Expo Go, Android Emulator, or iOS Simulator to run the mobile app
 
-## Start locally
+## First-time local setup
 
-1. Install dependencies from the repository root:
+Run every command in this section from the **repository root** (`Expo-App-Replica/`).
+
+1. Install workspace dependencies:
 
    ```powershell
    pnpm install
    ```
 
-2. Create local environment files and enter your credentials:
+2. Create the local environment files:
 
    ```powershell
    Copy-Item apps/api/.env.example apps/api/.env
    Copy-Item apps/mobile/.env.example apps/mobile/.env
    ```
 
-   Set `DATABASE_URL` in `apps/api/.env`. Add the Clerk publishable key to both environment files and the secret key to `apps/api/.env`.
+3. Edit `apps/api/.env`:
 
-3. Create the database schema and seed the course catalogue:
+   - Set `DATABASE_URL` to your local PostgreSQL database, for example `postgresql://postgres:postgres@localhost:5432/stem_smartstudy`.
+   - Set `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` from your Clerk application.
+   - Optionally set `CORS_ORIGIN` when using the Expo web client (for example `http://localhost:8081`).
+
+4. Edit `apps/mobile/.env` and set the same Clerk publishable key. Keep `EXPO_PUBLIC_API_URL=http://localhost:3001` for an emulator or Expo web. For a physical phone, replace `localhost` with your computer’s LAN IP, for example `http://192.168.1.20:3001`.
+
+5. Create the schema and seed courses:
 
    ```powershell
    pnpm --filter @stem-smartstudy/db push
    pnpm --filter @stem-smartstudy/db seed
    ```
 
-4. In one terminal, start the API:
+## Run the integrated application
 
-   ```powershell
-   pnpm dev:api
-   ```
+Open two PowerShell terminals. Both commands below run from the **repository root**.
 
-   Verify it at `http://localhost:3001/api/healthz`.
-
-5. In a second terminal, start Expo:
-
-   ```powershell
-   pnpm dev:mobile
-   ```
-
-   Use Expo's terminal menu to open an Android emulator, iOS simulator, or Expo Go. For a physical device, replace `EXPO_PUBLIC_API_URL` with your computer's LAN address, for example `http://192.168.1.20:3001`.
-
-## Other commands
+**Terminal 1 — backend (`apps/api`)**
 
 ```powershell
-pnpm typecheck
-pnpm build
-pnpm dev:web-preview
-pnpm --filter @stem-smartstudy/api-spec codegen
+pnpm dev:backend
 ```
 
-## Notes
+The backend loads `apps/api/.env`, listens on `http://localhost:3001`, and exposes:
 
-- Environment files are intentionally ignored by Git; `.env.example` files are safe templates.
-- The API defaults to port `3001`, while the web preview defaults to `5173`. Override either with `PORT`.
-- The mobile app needs a Clerk publishable key to render authentication screens. The API and database need their matching values before protected routes can work.
+- `GET /api/healthz` — no authentication required
+- `GET /api/students/me` — requires a Clerk bearer token
+- `GET /api/courses` — requires a Clerk bearer token
+
+Confirm the backend is running:
+
+```powershell
+Invoke-RestMethod http://localhost:3001/api/healthz
+```
+
+**Terminal 2 — mobile frontend (`apps/mobile`)**
+
+```powershell
+pnpm dev:mobile
+```
+
+Expo starts its development server and displays options to launch Android, iOS, web, or Expo Go. Sign in through Clerk; the mobile app automatically passes the session token to the backend and loads the student profile and course catalogue.
+
+## Development commands
+
+All commands in this table run from the **repository root** unless stated otherwise.
+
+| Command | Runs in | Purpose |
+| --- | --- | --- |
+| `pnpm dev:backend` | `apps/api` | Start the Express backend with file watching. |
+| `pnpm dev:mobile` | `apps/mobile` | Start Expo for the mobile frontend. |
+| `pnpm dev:web-preview` | `apps/web-preview` | Start the optional Vite preview tool. |
+| `pnpm --filter @stem-smartstudy/db push` | `packages/db` | Apply the Drizzle schema to `DATABASE_URL`. |
+| `pnpm --filter @stem-smartstudy/db seed` | `packages/db` | Seed or refresh the course catalogue. |
+| `pnpm --filter @stem-smartstudy/api-spec codegen` | `packages/api-spec` | Regenerate client and Zod types from the OpenAPI contract. |
+| `pnpm typecheck` | entire workspace | Type-check applications and shared packages. |
+| `pnpm build` | entire workspace | Run type checks and production builds. |
+
+## Production backend build
+
+Run these commands from the **repository root**:
+
+```powershell
+pnpm --filter @stem-smartstudy/api build
+pnpm --filter @stem-smartstudy/api start
+```
+
+`apps/api/.env` must be present when starting the backend. Build output is generated in `apps/api/dist/` and is ignored by Git.
+
+## API contract workflow
+
+1. Update `packages/api-spec/openapi.yaml`.
+2. From the repository root, run `pnpm --filter @stem-smartstudy/api-spec codegen`.
+3. Implement matching routes in `apps/api/src/routes/`.
+4. Run `pnpm typecheck` before committing.
+
+## Security and environment notes
+
+- `.env` files are ignored by Git. Only the `.env.example` templates are committed.
+- Never place Clerk secret keys in `apps/mobile/.env`; only `EXPO_PUBLIC_` values are visible to the mobile application.
+- The backend accepts authenticated mobile requests using Clerk bearer tokens. Restrict `CORS_ORIGIN` for browser deployments.
