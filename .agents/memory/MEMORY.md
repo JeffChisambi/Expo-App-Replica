@@ -1,0 +1,1 @@
+- [Scoped mobile installs](mobile-scoped-install.md) — Filter pnpm installs to the Expo app when unrelated workspace downloads block setup.
