@@ -18,7 +18,7 @@ import { officialLogoXml } from '@/constants/officialLogo';
 
 type TabKey = 'home' | 'courses' | 'quiz' | 'insights';
 type CourseName =
-  | 'Elementary Principles of Electricity and Magnetism'
+  | 'Elementary Principles of Electricity'
   | 'Programming'
   | 'Operating Systems';
 type Confidence = 'low' | 'medium' | 'high';
@@ -26,7 +26,7 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const courses: { name: CourseName; icon: IoniconName }[] = [
   {
-    name: 'Elementary Principles of Electricity and Magnetism',
+    name: 'Elementary Principles of Electricity',
     icon: 'flash-outline',
   },
   { name: 'Programming', icon: 'code-slash-outline' },
@@ -43,7 +43,7 @@ export default function SmartStudyDashboard() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedCourse, setSelectedCourse] =
-    useState<CourseName>('Elementary Principles of Electricity and Magnetism');
+    useState<CourseName>('Elementary Principles of Electricity');
   const [questionCount, setQuestionCount] = useState(10);
   const [quizStage, setQuizStage] = useState<'setup' | 'question' | 'submitted'>(
     'setup',
