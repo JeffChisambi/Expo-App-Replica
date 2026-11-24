@@ -15,63 +15,64 @@
 const colors = {
   light: {
     // Legacy aliases (kept for backward compatibility)
-    text: '#0a0a0a',
-    tint: '#2f95dc',
+    text: '#18243A',
+    tint: '#4668E8',
 
     // Core surfaces
-    background: '#ffffff',
-    foreground: '#0a0a0a',
+    background: '#F7F8FC',
+    foreground: '#18243A',
 
     // Cards / elevated surfaces
-    card: '#f9f9f9',
-    cardForeground: '#0a0a0a',
+    card: '#FFFFFF',
+    cardForeground: '#18243A',
 
     // Primary action color (buttons, links, active states)
-    primary: '#2f95dc',
+    primary: '#4668E8',
     primaryForeground: '#ffffff',
 
     // Secondary / less-emphasis interactive surfaces
-    secondary: '#f0f0f0',
-    secondaryForeground: '#1a1a1a',
+    secondary: '#F0F3F8',
+    secondaryForeground: '#18243A',
 
     // Muted / subdued elements (dividers, timestamps, placeholders)
-    muted: '#f0f0f0',
-    mutedForeground: '#737373',
+    muted: '#F0F3F8',
+    mutedForeground: '#68768C',
 
     // Accent highlights (badges, selected items, focus rings)
-    accent: '#f0f0f0',
-    accentForeground: '#1a1a1a',
+    accent: '#EAF0FF',
+    accentForeground: '#18243A',
 
     // Destructive actions (delete, error states)
     destructive: '#ef4444',
     destructiveForeground: '#ffffff',
 
     // Borders and input outlines
-    border: '#e5e5e5',
-    input: '#e5e5e5',
+    border: '#E5EAF2',
+    input: '#E5EAF2',
 
-    // Morning Therapy palette
-    ink: '#272832',
-    softInk: '#7D7E89',
-    quiet: '#A8A9B2',
-    line: '#ECECF1',
-    lavenderStart: '#7776F7',
-    lavenderEnd: '#6357DD',
-    coralStart: '#FF8850',
-    coralEnd: '#F45B3C',
-    aqua: '#91E6E6',
-    aquaDeep: '#4CAFC6',
-    peach: '#FFD0AD',
-    yellow: '#F6CC63',
-    paleBlue: '#EDF4FC',
-    paleLavender: '#F2F1FF',
-    palePink: '#FFF0ED',
+    // STEM SmartStudy palette
+    ink: '#18243A',
+    softInk: '#68768C',
+    quiet: '#98A3B4',
+    line: '#E5EAF2',
+    deep: '#192A49',
+    heroStart: '#3858C9',
+    heroEnd: '#263F99',
+    heroAccent: '#FFD16A',
+    heroSoft: '#D7E1FF',
+    teal: '#168C81',
+    amber: '#F1B84C',
+    amberInk: '#9C6A12',
+    coral: '#E56D55',
+    paleBlue: '#EAF0FF',
+    paleTeal: '#E5F5F1',
+    paleAmber: '#FFF5DE',
+    paleCoral: '#FFF0EB',
     bottomBar: '#FFFFFF',
-    softWhite: '#FFFFFFCC',
-    whiteGlow: '#FFFFFF94',
-    modalScrim: '#1A1B2657',
-    profilePlaceholder: '#E8F0F8',
-    online: '#6D82E8',
+    white: '#FFFFFF',
+    scrim: '#14203F75',
+    heroOverlay: '#FFFFFF14',
+    heroOverlaySoft: '#FFFFFF0F',
   },
 
   // Border radius (in px). Sync from the sibling web artifact's --radius

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Morning Therapy",
+    "name": "STEM SmartStudy",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false
     },

@@ -1,7 +1,5 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   Modal,
@@ -13,26 +11,88 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 
-type DashboardTab = 'home' | 'calendar' | 'clients' | 'notifications';
-type ModalType = 'appointment' | 'profile' | 'privacy' | null;
+type TabKey = 'home' | 'courses' | 'quiz' | 'insights';
+type CourseName =
+  | 'Mathematics'
+  | 'Physics'
+  | 'Chemistry'
+  | 'Biology'
+  | 'Computer Science'
+  | 'Engineering';
+type Confidence = 'low' | 'medium' | 'high';
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const profileImage = require('../../assets/images/alexander-profile.png');
+const courses: { name: CourseName; icon: IoniconName }[] = [
+  { name: 'Mathematics', icon: 'calculator-outline' },
+  { name: 'Physics', icon: 'planet-outline' },
+  { name: 'Chemistry', icon: 'flask-outline' },
+  { name: 'Biology', icon: 'leaf-outline' },
+  { name: 'Computer Science', icon: 'code-slash-outline' },
+  { name: 'Engineering', icon: 'construct-outline' },
+];
 
-export default function MorningDashboard() {
+const sampleQuestion = {
+  prompt: 'Which expression is equivalent to 2(x + 3)?',
+  options: [
+    { key: 'A', text: '2x + 3' },
+    { key: 'B', text: '2x + 6' },
+    { key: 'C', text: 'x + 6' },
+    { key: 'D', text: '2x + 9' },
+  ],
+};
+
+export default function SmartStudyDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('home');
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const [savedAppointment, setSavedAppointment] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [selectedCourse, setSelectedCourse] =
+    useState<CourseName>('Mathematics');
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(['Algebra']);
+  const [questionCount, setQuestionCount] = useState(10);
+  const [quizStage, setQuizStage] = useState<'setup' | 'question' | 'submitted'>(
+    'setup',
+  );
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [confidence, setConfidence] = useState<Confidence | null>(null);
+  const [sampleNotice, setSampleNotice] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
+
   const topInset =
     Platform.OS === 'web' ? Math.max(67, insets.top) : insets.top;
   const bottomInset =
     Platform.OS === 'web' ? Math.max(34, insets.bottom) : insets.bottom;
 
-  const openCalendar = () => setActiveTab('calendar');
+  const startQuiz = () => {
+    if (selectedCourse !== 'Mathematics') {
+      setSampleNotice(
+        'The contract sample includes a Mathematics question. Other question sets load from the question bank.',
+      );
+      return;
+    }
+    setSampleNotice('');
+    setSelectedOption(null);
+    setConfidence(null);
+    setQuizStage('question');
+  };
+
+  const openQuizSetup = () => {
+    setQuizStage('setup');
+    setSelectedOption(null);
+    setConfidence(null);
+    setSampleNotice('');
+    setActiveTab('quiz');
+  };
+
+  const toggleTopic = (topic: string) => {
+    setSelectedTopics((current) =>
+      current.includes(topic)
+        ? current.filter((item) => item !== topic)
+        : [...current, topic],
+    );
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -41,57 +101,83 @@ export default function MorningDashboard() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: topInset + 8, paddingBottom: 112 + bottomInset },
+          { paddingTop: topInset + 8, paddingBottom: 96 + bottomInset },
         ]}
       >
-        <View style={styles.topBar}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <View style={[styles.brandIcon, { backgroundColor: colors.deep }]}>
+              <Ionicons name="school-outline" size={20} color={colors.white} />
+            </View>
+            <View>
+              <Text style={[styles.brandName, { color: colors.ink }]}>
+                STEM SmartStudy
+              </Text>
+              <Text style={[styles.brandCaption, { color: colors.softInk }]}>
+                Learn what matters next
+              </Text>
+            </View>
+          </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Privacy and app menu"
-            testID="open-menu"
-            onPress={() => setActiveModal('privacy')}
+            accessibilityLabel="Open student profile"
+            testID="open-student-profile"
+            onPress={() => setProfileOpen(true)}
             style={({ pressed }) => [
-              styles.menuButton,
-              { borderColor: colors.line },
+              styles.profileButton,
+              { backgroundColor: colors.paleBlue },
               pressed && styles.pressed,
             ]}
           >
-            <Ionicons name="grid-outline" size={18} color={colors.ink} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open Alexander's profile"
-            testID="open-profile"
-            onPress={() => setActiveModal('profile')}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Image
-              source={profileImage}
-              style={[styles.avatar, { backgroundColor: colors.profilePlaceholder }]}
-              contentFit="cover"
-            />
-            <View
-              style={[
-                styles.onlineDot,
-                { borderColor: colors.background, backgroundColor: colors.online },
-              ]}
-            />
+            <Ionicons name="person-outline" size={19} color={colors.primary} />
           </Pressable>
         </View>
 
         {activeTab === 'home' ? (
-          <HomeContent
+          <HomeScreen
             colors={colors}
-            onAppointmentPress={() => setActiveModal('appointment')}
-            onBookmarkPress={() => setSavedAppointment((saved) => !saved)}
-            savedAppointment={savedAppointment}
-            onViewAll={openCalendar}
+            selectedCourse={selectedCourse}
+            onSelectCourse={setSelectedCourse}
+            onOpenCourses={() => setActiveTab('courses')}
+            onStartQuiz={openQuizSetup}
+            onOpenInsights={() => setActiveTab('insights')}
+          />
+        ) : activeTab === 'courses' ? (
+          <CoursesScreen
+            colors={colors}
+            selectedCourse={selectedCourse}
+            onSelectCourse={setSelectedCourse}
+          />
+        ) : activeTab === 'quiz' ? (
+          <QuizScreen
+            colors={colors}
+            selectedCourse={selectedCourse}
+            onSelectCourse={(course) => {
+              setSelectedCourse(course);
+              setSampleNotice('');
+            }}
+            selectedTopics={selectedTopics}
+            onToggleTopic={toggleTopic}
+            questionCount={questionCount}
+            onQuestionCount={setQuestionCount}
+            stage={quizStage}
+            selectedOption={selectedOption}
+            onSelectOption={setSelectedOption}
+            confidence={confidence}
+            onConfidence={setConfidence}
+            sampleNotice={sampleNotice}
+            onStart={startQuiz}
+            onSubmit={() => setQuizStage('submitted')}
+            onReset={() => {
+              setQuizStage('setup');
+              setSelectedOption(null);
+              setConfidence(null);
+            }}
           />
         ) : (
-          <TabContent
-            tab={activeTab}
+          <InsightsScreen
             colors={colors}
-            onAppointmentPress={() => setActiveModal('appointment')}
+            onStartQuiz={openQuizSetup}
           />
         )}
       </ScrollView>
@@ -108,400 +194,1027 @@ export default function MorningDashboard() {
       >
         <NavigationButton
           label="Home"
-          name="home"
+          icon="home-outline"
           active={activeTab === 'home'}
           colors={colors}
           onPress={() => setActiveTab('home')}
         />
         <NavigationButton
-          label="Calendar"
-          name="calendar"
-          active={activeTab === 'calendar'}
+          label="Courses"
+          icon="book-outline"
+          active={activeTab === 'courses'}
           colors={colors}
-          onPress={() => setActiveTab('calendar')}
+          onPress={() => setActiveTab('courses')}
         />
         <NavigationButton
-          label="Clients"
-          name="users"
-          active={activeTab === 'clients'}
+          label="Quiz"
+          icon="help-circle-outline"
+          active={activeTab === 'quiz'}
           colors={colors}
-          onPress={() => setActiveTab('clients')}
+          onPress={openQuizSetup}
         />
         <NavigationButton
-          label="Notifications"
-          name="bell"
-          active={activeTab === 'notifications'}
+          label="Insights"
+          icon="analytics-outline"
+          active={activeTab === 'insights'}
           colors={colors}
-          onPress={() => setActiveTab('notifications')}
+          onPress={() => setActiveTab('insights')}
         />
       </View>
 
-      <InfoModal
-        type={activeModal}
+      <ProfileModal
+        visible={profileOpen}
         colors={colors}
-        savedAppointment={savedAppointment}
-        onClose={() => setActiveModal(null)}
-        onSave={() => setSavedAppointment((saved) => !saved)}
+        onClose={() => setProfileOpen(false)}
       />
     </View>
   );
 }
 
-function HomeContent({
+function HomeScreen({
   colors,
-  onAppointmentPress,
-  onBookmarkPress,
-  savedAppointment,
-  onViewAll,
+  selectedCourse,
+  onSelectCourse,
+  onOpenCourses,
+  onStartQuiz,
+  onOpenInsights,
 }: {
   colors: ReturnType<typeof useColors>;
-  onAppointmentPress: () => void;
-  onBookmarkPress: () => void;
-  savedAppointment: boolean;
-  onViewAll: () => void;
+  selectedCourse: CourseName;
+  onSelectCourse: (course: CourseName) => void;
+  onOpenCourses: () => void;
+  onStartQuiz: () => void;
+  onOpenInsights: () => void;
 }) {
   return (
-    <>
-      <View style={styles.greeting}>
-        <Text style={[styles.greetingTitle, { color: colors.ink }]}>Morning</Text>
-        <Text style={[styles.greetingName, { color: colors.ink }]}>Alexander</Text>
-        <Text style={[styles.privacyCaption, { color: colors.softInk }]}>
-          Remains private and protected.
+    <View style={styles.page}>
+      <View style={styles.welcome}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>
+          YOUR STUDY DASHBOARD
         </Text>
+        <Text style={[styles.title, { color: colors.ink }]}>
+          Find what to focus on.
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.softInk }]}>
+          Turn quiz responses into a clearer plan for your STEM studies.
+        </Text>
+      </View>
+
+      <LinearGradient
+        colors={[colors.heroStart, colors.heroEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <View
+          style={[styles.heroOrbitOne, { backgroundColor: colors.heroOverlay }]}
+        />
+        <View
+          style={[styles.heroOrbitTwo, { backgroundColor: colors.heroOverlaySoft }]}
+        />
+        <View
+          style={[styles.heroIcon, { backgroundColor: colors.heroOverlay }]}
+        >
+          <Ionicons name="bulb-outline" size={35} color={colors.heroAccent} />
+        </View>
+        <Text style={[styles.heroEyebrow, { color: colors.heroSoft }]}>
+          START WITH A DIAGNOSTIC
+        </Text>
+        <Text style={[styles.heroTitle, { color: colors.white }]}>
+          Study with a plan.
+        </Text>
+        <Text style={[styles.heroCopy, { color: colors.heroSoft }]}>
+          A short quiz helps identify topics that need more practice.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          testID="home-start-diagnostic"
+          onPress={onStartQuiz}
+          style={({ pressed }) => [
+            styles.heroAction,
+            { backgroundColor: colors.white },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={[styles.heroActionText, { color: colors.deep }]}>
+            Start a diagnostic
+          </Text>
+          <Ionicons name="arrow-forward" size={17} color={colors.deep} />
+        </Pressable>
+      </LinearGradient>
+
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: colors.ink }]}>
+            Your courses
+          </Text>
+          <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+            Choose a subject for your next quiz
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          testID="home-view-courses"
+          onPress={onOpenCourses}
+          hitSlop={8}
+        >
+          <Text style={[styles.linkText, { color: colors.primary }]}>
+            See all
+          </Text>
+        </Pressable>
       </View>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.metricsRow}
-        snapToInterval={178}
-        decelerationRate="fast"
+        contentContainerStyle={styles.courseRail}
       >
-        <MetricCard
-          title="Success"
-          value="56%"
-          variant="success"
-          colors={colors}
-          accessibilityLabel="Success rate, 56 percent"
-        />
-        <MetricCard
-          title="Clients"
-          value="286"
-          variant="clients"
-          colors={colors}
-          accessibilityLabel="286 clients"
-        />
+        {courses.slice(0, 4).map((course) => (
+          <CourseChip
+            key={course.name}
+            course={course}
+            selected={course.name === selectedCourse}
+            colors={colors}
+            onPress={() => onSelectCourse(course.name)}
+          />
+        ))}
       </ScrollView>
 
-      <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.ink }]}>Appointment</Text>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: colors.ink }]}>
+            Topic difficulty
+          </Text>
+          <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+            Understand which topics need attention
+          </Text>
+        </View>
         <Pressable
           accessibilityRole="button"
-          testID="view-all-appointments"
-          onPress={onViewAll}
+          testID="home-view-insights"
+          onPress={onOpenInsights}
           hitSlop={8}
         >
-          <Text style={[styles.viewAll, { color: colors.quiet }]}>View all</Text>
+          <Text style={[styles.linkText, { color: colors.primary }]}>
+            Details
+          </Text>
         </Pressable>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Family Therapy tomorrow, 5:30 PM to 6:30 PM"
-        testID="appointment-card"
-        onPress={onAppointmentPress}
-        style={({ pressed }) => [
-          styles.appointmentCard,
-          { borderColor: colors.line, backgroundColor: colors.background },
-          pressed && styles.pressed,
-        ]}
-      >
-        <View style={styles.appointmentTop}>
-          <View style={[styles.appointmentIcon, { backgroundColor: colors.paleBlue }]}>
-            <Ionicons name="document-text" size={19} color={colors.aquaDeep} />
-          </View>
-          <View style={styles.appointmentText}>
-            <Text style={[styles.appointmentName, { color: colors.ink }]}>
-              Family Therapy
-            </Text>
-            <Text style={[styles.appointmentDate, { color: colors.quiet }]}>
-              Tomorrow
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={savedAppointment ? 'Remove saved appointment' : 'Save appointment'}
-            testID="save-appointment"
-            onPress={(event) => {
-              event.stopPropagation();
-              onBookmarkPress();
-            }}
-            hitSlop={10}
-            style={styles.bookmarkButton}
-          >
-            <Ionicons
-              name={savedAppointment ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={savedAppointment ? colors.primary : colors.quiet}
-            />
-          </Pressable>
-        </View>
-        <View style={styles.appointmentTags}>
-          <View style={[styles.tag, { backgroundColor: colors.palePink }]}>
-            <Text style={[styles.tagText, { color: colors.softInk }]}>
-              5:30pm to 6:30pm
-            </Text>
-          </View>
-          <View style={[styles.tag, { backgroundColor: colors.palePink }]}>
-            <Text style={[styles.tagText, { color: colors.softInk }]}>
-              $100 / dollar
-            </Text>
-          </View>
-        </View>
-      </Pressable>
-    </>
-  );
-}
+      <DifficultyExample colors={colors} />
 
-function MetricCard({
-  title,
-  value,
-  variant,
-  colors,
-  accessibilityLabel,
-}: {
-  title: string;
-  value: string;
-  variant: 'success' | 'clients';
-  colors: ReturnType<typeof useColors>;
-  accessibilityLabel: string;
-}) {
-  const gradient =
-    variant === 'success'
-      ? ([colors.lavenderStart, colors.lavenderEnd] as const)
-      : ([colors.coralStart, colors.coralEnd] as const);
-
-  return (
-    <LinearGradient
-      accessible
-      accessibilityLabel={accessibilityLabel}
-      colors={gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.metricCard}
-    >
-      <View style={styles.metricHeading}>
-        <Text style={[styles.metricLabel, { color: colors.primaryForeground }]}>
-          {title}
-        </Text>
-        <Feather name="more-horizontal" size={17} color={colors.softWhite} />
-      </View>
-      <Text style={[styles.metricValue, { color: colors.primaryForeground }]}>
-        {value}
-      </Text>
-      <MetricArtwork variant={variant} colors={colors} />
-    </LinearGradient>
-  );
-}
-
-function MetricArtwork({
-  variant,
-  colors,
-}: {
-  variant: 'success' | 'clients';
-  colors: ReturnType<typeof useColors>;
-}) {
-  if (variant === 'success') {
-    return (
-      <Svg width={124} height={68} viewBox="0 0 124 68" style={styles.artwork}>
-        <Path
-          d="M6 67C19 49 28 30 46 17c7-5 14-7 21-5-11 15-15 31-15 55H6Z"
-          fill={colors.aqua}
-        />
-        <Path
-          d="M20 67c10-17 23-31 41-42 8-5 17-8 28-8-11 12-18 29-21 50H20Z"
-          fill={colors.aquaDeep}
-        />
-        <Path
-          d="M48 67c9-22 23-37 45-48 7-3 14-5 22-5-13 14-21 31-23 53H48Z"
-          fill={colors.peach}
-          opacity={0.84}
-        />
-        <Circle cx={91} cy={13} r={5} fill={colors.whiteGlow} />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg width={128} height={72} viewBox="0 0 128 72" style={styles.artwork}>
-      {variant === 'clients' ? (
-        <>
-          <Rect
-            x={15}
-            y={29}
-            width={31}
-            height={54}
-            rx={15}
-            fill={colors.yellow}
-            transform="rotate(-24 15 29)"
-          />
-          <Rect
-            x={47}
-            y={17}
-            width={28}
-            height={57}
-            rx={14}
-            fill={colors.peach}
-            transform="rotate(-8 47 17)"
-          />
-          <Ellipse
-            cx={92}
-            cy={49}
-            rx={20}
-            ry={12}
-            fill={colors.yellow}
-            transform="rotate(-25 92 49)"
-          />
-          <Ellipse
-            cx={110}
-            cy={62}
-            rx={19}
-            ry={11}
-            fill={colors.peach}
-            transform="rotate(-34 110 62)"
-          />
-        </>
-      ) : (
-        <>
-          <Circle cx={86} cy={52} r={32} fill={colors.whiteGlow} />
-          <Circle cx={104} cy={34} r={19} fill={colors.softWhite} />
-          <Path
-            d="M49 68c9-16 22-25 39-28 10-2 20-1 30 4"
-            fill="none"
-            stroke={colors.primaryForeground}
-            strokeWidth={3}
-            strokeLinecap="round"
-          />
-        </>
-      )}
-    </Svg>
-  );
-}
-
-function TabContent({
-  tab,
-  colors,
-  onAppointmentPress,
-}: {
-  tab: Exclude<DashboardTab, 'home'>;
-  colors: ReturnType<typeof useColors>;
-  onAppointmentPress: () => void;
-}) {
-  if (tab === 'calendar') {
-    return (
-      <View style={styles.secondaryContent}>
-        <Text style={[styles.pageTitle, { color: colors.ink }]}>Appointments</Text>
-        <Text style={[styles.pageSubtitle, { color: colors.softInk }]}>
-          Your upcoming session
-        </Text>
-        <Pressable
-          onPress={onAppointmentPress}
-          accessibilityRole="button"
-          testID="calendar-appointment"
-          style={({ pressed }) => [
-            styles.appointmentCard,
-            { borderColor: colors.line, backgroundColor: colors.background },
-            pressed && styles.pressed,
-          ]}
-        >
-          <View style={styles.appointmentTop}>
-            <View style={[styles.appointmentIcon, { backgroundColor: colors.paleBlue }]}>
-              <Ionicons name="document-text" size={19} color={colors.aquaDeep} />
-            </View>
-            <View style={styles.appointmentText}>
-              <Text style={[styles.appointmentName, { color: colors.ink }]}>
-                Family Therapy
-              </Text>
-              <Text style={[styles.appointmentDate, { color: colors.quiet }]}>
-                Tomorrow
-              </Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.quiet} />
-          </View>
-          <View style={styles.appointmentTags}>
-            <View style={[styles.tag, { backgroundColor: colors.palePink }]}>
-              <Text style={[styles.tagText, { color: colors.softInk }]}>
-                5:30pm to 6:30pm
-              </Text>
-            </View>
-            <View style={[styles.tag, { backgroundColor: colors.palePink }]}>
-              <Text style={[styles.tagText, { color: colors.softInk }]}>
-                $100 / dollar
-              </Text>
-            </View>
-          </View>
-        </Pressable>
-      </View>
-    );
-  }
-
-  if (tab === 'clients') {
-    return (
-      <View style={styles.secondaryContent}>
-        <Text style={[styles.pageTitle, { color: colors.ink }]}>Clients</Text>
-        <Text style={[styles.pageSubtitle, { color: colors.softInk }]}>
-          A clear view of your practice
-        </Text>
-        <LinearGradient
-          colors={[colors.lavenderStart, colors.lavenderEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.clientSummary}
-        >
-          <Feather name="users" size={20} color={colors.softWhite} />
-          <Text style={[styles.clientCount, { color: colors.primaryForeground }]}>
-            286
-          </Text>
-          <Text style={[styles.clientLabel, { color: colors.softWhite }]}>
-            Clients
-          </Text>
-        </LinearGradient>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.secondaryContent}>
-      <Text style={[styles.pageTitle, { color: colors.ink }]}>Notifications</Text>
       <View
         style={[
-          styles.emptyNotice,
-          { backgroundColor: colors.card, borderColor: colors.line },
+          styles.recommendationCard,
+          { borderColor: colors.line, backgroundColor: colors.card },
         ]}
       >
-        <View style={[styles.emptyIcon, { backgroundColor: colors.paleLavender }]}>
-          <Feather name="bell" size={19} color={colors.lavenderEnd} />
+        <View style={[styles.recommendationIcon, { backgroundColor: colors.paleTeal }]}>
+          <Ionicons name="sparkles-outline" size={19} color={colors.teal} />
         </View>
-        <Text style={[styles.emptyTitle, { color: colors.ink }]}>
-          You’re all caught up
-        </Text>
-        <Text style={[styles.emptyCopy, { color: colors.softInk }]}>
-          New updates will appear here.
-        </Text>
+        <View style={styles.recommendationBody}>
+          <Text style={[styles.recommendationTitle, { color: colors.ink }]}>
+            Personalized recommendations
+          </Text>
+          <Text style={[styles.recommendationText, { color: colors.softInk }]}>
+            Take a diagnostic quiz to get study suggestions based on your answers.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            testID="home-get-recommendations"
+            onPress={onStartQuiz}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={[styles.linkText, styles.inlineAction, { color: colors.teal }]}>
+              Find your next topic
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
+function CoursesScreen({
+  colors,
+  selectedCourse,
+  onSelectCourse,
+}: {
+  colors: ReturnType<typeof useColors>;
+  selectedCourse: CourseName;
+  onSelectCourse: (course: CourseName) => void;
+}) {
+  return (
+    <View style={styles.page}>
+      <View style={styles.pageHeading}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>
+          COURSE CATALOG
+        </Text>
+        <Text style={[styles.title, { color: colors.ink }]}>Explore STEM</Text>
+        <Text style={[styles.subtitle, { color: colors.softInk }]}>
+          Select a course to focus your diagnostic and topic analysis.
+        </Text>
+      </View>
+
+      <View style={[styles.previewNotice, { backgroundColor: colors.paleAmber }]}>
+        <Ionicons name="information-circle-outline" size={17} color={colors.amberInk} />
+        <Text style={[styles.previewNoticeText, { color: colors.amberInk }]}>
+          Course names shown are examples from the API contract.
+        </Text>
+      </View>
+
+      <View style={styles.courseGrid}>
+        {courses.map((course, index) => (
+          <CourseCard
+            key={course.name}
+            course={course}
+            selected={selectedCourse === course.name}
+            colors={colors}
+            accentIndex={index}
+            onPress={() => onSelectCourse(course.name)}
+          />
+        ))}
+      </View>
+
+      <View
+        style={[
+          styles.topicsCard,
+          { backgroundColor: colors.card, borderColor: colors.line },
+        ]}
+      >
+        <View style={styles.topicsHeading}>
+          <View style={[styles.smallIconBox, { backgroundColor: colors.paleBlue }]}>
+            <Ionicons name="list-outline" size={17} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.topicsTitle, { color: colors.ink }]}>
+              {selectedCourse} topics
+            </Text>
+            <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+              Topics are provided by each course
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.quiet} />
+        </View>
+        {selectedCourse === 'Mathematics' ? (
+          <View style={styles.topicTags}>
+            <TopicTag label="Algebra" colors={colors} />
+            <TopicTag label="Geometry" colors={colors} />
+            <Text style={[styles.exampleCaption, { color: colors.quiet }]}>
+              Contract examples
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
+            Choose a course topic when its course data is available.
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function QuizScreen({
+  colors,
+  selectedCourse,
+  onSelectCourse,
+  selectedTopics,
+  onToggleTopic,
+  questionCount,
+  onQuestionCount,
+  stage,
+  selectedOption,
+  onSelectOption,
+  confidence,
+  onConfidence,
+  sampleNotice,
+  onStart,
+  onSubmit,
+  onReset,
+}: {
+  colors: ReturnType<typeof useColors>;
+  selectedCourse: CourseName;
+  onSelectCourse: (course: CourseName) => void;
+  selectedTopics: string[];
+  onToggleTopic: (topic: string) => void;
+  questionCount: number;
+  onQuestionCount: (count: number) => void;
+  stage: 'setup' | 'question' | 'submitted';
+  selectedOption: string | null;
+  onSelectOption: (key: string) => void;
+  confidence: Confidence | null;
+  onConfidence: (value: Confidence) => void;
+  sampleNotice: string;
+  onStart: () => void;
+  onSubmit: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <View style={styles.page}>
+      <View style={styles.pageHeading}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>
+          QUIZ ATTEMPTS
+        </Text>
+        <Text style={[styles.title, { color: colors.ink }]}>
+          {stage === 'setup'
+            ? 'Check your understanding.'
+            : stage === 'question'
+              ? 'Question 1'
+              : 'Response preview'}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.softInk }]}>
+          {stage === 'setup'
+            ? 'Your answers, time and confidence help surface difficult topics.'
+            : stage === 'question'
+              ? 'Choose one answer, then rate how confident you feel.'
+              : 'This sample flow does not send or save an answer.'}
+        </Text>
+      </View>
+
+      {stage === 'setup' ? (
+        <View
+          style={[
+            styles.quizSetupCard,
+            { backgroundColor: colors.card, borderColor: colors.line },
+          ]}
+        >
+          <View style={styles.setupTitleRow}>
+            <View style={[styles.largeIconBox, { backgroundColor: colors.paleBlue }]}>
+              <Ionicons name="clipboard-outline" size={21} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.topicsTitle, { color: colors.ink }]}>
+                Diagnostic setup
+              </Text>
+              <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+                Select a course and topics
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.formLabel, { color: colors.ink }]}>Course</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.courseRail}
+          >
+            {courses.map((course) => (
+              <CourseChip
+                key={course.name}
+                course={course}
+                selected={course.name === selectedCourse}
+                colors={colors}
+                onPress={() => onSelectCourse(course.name)}
+              />
+            ))}
+          </ScrollView>
+
+          <Text style={[styles.formLabel, { color: colors.ink }]}>Topics</Text>
+          <View style={styles.topicTags}>
+            {(selectedCourse === 'Mathematics'
+              ? ['Algebra', 'Geometry']
+              : ['All available topics']
+            ).map((topic) =>
+              topic === 'All available topics' ? (
+                <View
+                  key={topic}
+                  style={[styles.topicPlaceholderChip, { backgroundColor: colors.secondary }]}
+                >
+                  <Text style={[styles.topicChipText, { color: colors.softInk }]}>
+                    {topic}
+                  </Text>
+                </View>
+              ) : (
+                <SelectableTopic
+                  key={topic}
+                  label={topic}
+                  selected={selectedTopics.includes(topic)}
+                  colors={colors}
+                  onPress={() => onToggleTopic(topic)}
+                />
+              ),
+            )}
+          </View>
+
+          <Text style={[styles.formLabel, { color: colors.ink }]}>
+            Number of questions
+          </Text>
+          <View style={styles.countOptions}>
+            {[5, 10, 20].map((count) => (
+              <Pressable
+                key={count}
+                accessibilityRole="button"
+                accessibilityState={{ selected: questionCount === count }}
+                testID={`question-count-${count}`}
+                onPress={() => onQuestionCount(count)}
+                style={[
+                  styles.countOption,
+                  {
+                    backgroundColor:
+                      questionCount === count ? colors.deep : colors.secondary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countText,
+                    {
+                      color:
+                        questionCount === count ? colors.white : colors.softInk,
+                    },
+                  ]}
+                >
+                  {count}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {sampleNotice ? (
+            <Text style={[styles.inlineNotice, { color: colors.amberInk }]}>
+              {sampleNotice}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            testID="start-quiz-preview"
+            onPress={onStart}
+            disabled={selectedCourse === 'Mathematics' && selectedTopics.length === 0}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: colors.primary },
+              selectedCourse === 'Mathematics' &&
+                selectedTopics.length === 0 &&
+                styles.disabledButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="play" size={16} color={colors.white} />
+            <Text style={[styles.primaryButtonText, { color: colors.white }]}>
+              Start sample quiz
+            </Text>
+          </Pressable>
+          <Text style={[styles.previewFootnote, { color: colors.quiet }]}>
+            Preview only · answers are not saved to a server
+          </Text>
+        </View>
+      ) : stage === 'question' ? (
+        <View
+          style={[
+            styles.questionCard,
+            { backgroundColor: colors.card, borderColor: colors.line },
+          ]}
+        >
+          <View style={styles.questionMeta}>
+            <View style={[styles.questionNumber, { backgroundColor: colors.paleBlue }]}>
+              <Text style={[styles.questionNumberText, { color: colors.primary }]}>
+                01
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.questionCourse, { color: colors.ink }]}>
+                Mathematics · Algebra
+              </Text>
+              <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+                Sample question from the API contract
+              </Text>
+            </View>
+            <View style={[styles.sampleBadge, { backgroundColor: colors.paleAmber }]}>
+              <Text style={[styles.sampleBadgeText, { color: colors.amberInk }]}>
+                SAMPLE
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.questionPrompt, { color: colors.ink }]}>
+            {sampleQuestion.prompt}
+          </Text>
+
+          <View style={styles.answerList}>
+            {sampleQuestion.options.map((option) => {
+              const selected = selectedOption === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  testID={`answer-${option.key.toLowerCase()}`}
+                  onPress={() => onSelectOption(option.key)}
+                  style={[
+                    styles.answerOption,
+                    {
+                      backgroundColor: selected ? colors.paleBlue : colors.background,
+                      borderColor: selected ? colors.primary : colors.line,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.answerKey,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.secondary,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.answerKeyText,
+                        { color: selected ? colors.white : colors.softInk },
+                      ]}
+                    >
+                      {option.key}
+                    </Text>
+                  </View>
+                  <Text style={[styles.answerText, { color: colors.ink }]}>
+                    {option.text}
+                  </Text>
+                  {selected ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.formLabel, { color: colors.ink }]}>
+            How confident are you?
+          </Text>
+          <View style={styles.confidenceRow}>
+            {(['low', 'medium', 'high'] as Confidence[]).map((level) => {
+              const selected = confidence === level;
+              return (
+                <Pressable
+                  key={level}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  testID={`confidence-${level}`}
+                  onPress={() => onConfidence(level)}
+                  style={[
+                    styles.confidenceOption,
+                    {
+                      backgroundColor: selected ? colors.deep : colors.secondary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.confidenceText,
+                      { color: selected ? colors.white : colors.softInk },
+                    ]}
+                  >
+                    {level[0].toUpperCase() + level.slice(1)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            testID="submit-answer-preview"
+            onPress={onSubmit}
+            disabled={!selectedOption || !confidence}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: colors.primary },
+              (!selectedOption || !confidence) && styles.disabledButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.primaryButtonText, { color: colors.white }]}>
+              Preview response
+            </Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.white} />
+          </Pressable>
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.submittedCard,
+            { backgroundColor: colors.card, borderColor: colors.line },
+          ]}
+        >
+          <View style={[styles.successIcon, { backgroundColor: colors.paleTeal }]}>
+            <Ionicons name="checkmark" size={24} color={colors.teal} />
+          </View>
+          <Text style={[styles.submittedTitle, { color: colors.ink }]}>
+            Preview response ready
+          </Text>
+          <Text style={[styles.submittedCopy, { color: colors.softInk }]}>
+            Choice {selectedOption} · Confidence {confidence}
+          </Text>
+          <View style={[styles.responseNote, { backgroundColor: colors.paleBlue }]}>
+            <Ionicons name="cloud-outline" size={17} color={colors.primary} />
+            <Text style={[styles.responseNoteText, { color: colors.ink }]}>
+              A connected API will record the response and determine correctness after submission.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            testID="reset-quiz-preview"
+            onPress={onReset}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              { borderColor: colors.line },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="refresh-outline" size={17} color={colors.primary} />
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              Start another preview
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function InsightsScreen({
+  colors,
+  onStartQuiz,
+}: {
+  colors: ReturnType<typeof useColors>;
+  onStartQuiz: () => void;
+}) {
+  return (
+    <View style={styles.page}>
+      <View style={styles.pageHeading}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>
+          PERFORMANCE
+        </Text>
+        <Text style={[styles.title, { color: colors.ink }]}>
+          Make sense of the hard parts.
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.softInk }]}>
+          Topic difficulty uses accuracy, response time and confidence.
+        </Text>
+      </View>
+
+      <View
+        style={[
+          styles.insightCard,
+          { backgroundColor: colors.card, borderColor: colors.line },
+        ]}
+      >
+        <View style={styles.insightHeader}>
+          <View style={[styles.largeIconBox, { backgroundColor: colors.paleBlue }]}>
+            <Ionicons name="analytics-outline" size={21} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.topicsTitle, { color: colors.ink }]}>
+              Topic difficulty
+            </Text>
+            <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+              Scores range from 0.00 to 1.00
+            </Text>
+          </View>
+        </View>
+
+        <DifficultyScale colors={colors} />
+        <DifficultyExample colors={colors} compact />
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: colors.ink }]}>
+            Most missed questions
+          </Text>
+          <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+            Ranked from course response data
+          </Text>
+        </View>
+        <View style={[styles.smallIconBox, { backgroundColor: colors.paleCoral }]}>
+          <Ionicons name="alert-circle-outline" size={17} color={colors.coral} />
+        </View>
+      </View>
+      <View
+        style={[
+          styles.emptyCard,
+          { backgroundColor: colors.card, borderColor: colors.line },
+        ]}
+      >
+        <Ionicons name="bar-chart-outline" size={20} color={colors.quiet} />
+        <Text style={[styles.emptyTitle, { color: colors.ink }]}>
+          Course analytics will appear here
+        </Text>
+        <Text style={[styles.emptyCopy, { color: colors.softInk }]}>
+          Most-missed questions need response data from a course.
+        </Text>
+      </View>
+
+      <View
+        style={[
+          styles.recommendationCard,
+          { borderColor: colors.line, backgroundColor: colors.card },
+        ]}
+      >
+        <View style={[styles.recommendationIcon, { backgroundColor: colors.paleTeal }]}>
+          <Ionicons name="sparkles-outline" size={19} color={colors.teal} />
+        </View>
+        <View style={styles.recommendationBody}>
+          <Text style={[styles.recommendationTitle, { color: colors.ink }]}>
+            Your recommendations
+          </Text>
+          <Text style={[styles.recommendationText, { color: colors.softInk }]}>
+            Complete a diagnostic first. The API returns personal suggestions when results are available.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            testID="insights-start-diagnostic"
+            onPress={onStartQuiz}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={[styles.linkText, styles.inlineAction, { color: colors.teal }]}>
+              Start a diagnostic
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function DifficultyExample({
+  colors,
+  compact = false,
+}: {
+  colors: ReturnType<typeof useColors>;
+  compact?: boolean;
+}) {
+  return (
+    <View
+      style={[
+        styles.difficultyCard,
+        compact && styles.difficultyCardCompact,
+        { borderColor: colors.line, backgroundColor: colors.card },
+      ]}
+    >
+      <View style={styles.difficultyTop}>
+        <View style={styles.difficultyTopic}>
+          <View style={[styles.topicIcon, { backgroundColor: colors.paleAmber }]}>
+            <Ionicons name="calculator-outline" size={17} color={colors.amberInk} />
+          </View>
+          <View>
+            <Text style={[styles.difficultyName, { color: colors.ink }]}>
+              Algebra
+            </Text>
+            <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+              Mathematics
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.difficultBadge, { backgroundColor: colors.paleCoral }]}>
+          <Text style={[styles.difficultBadgeText, { color: colors.coral }]}>
+            Difficult
+          </Text>
+        </View>
+      </View>
+      <View style={styles.scoreRow}>
+        <View style={[styles.scoreTrack, { backgroundColor: colors.secondary }]}>
+          <View
+            style={[
+              styles.scoreFill,
+              { backgroundColor: colors.coral, width: '78%' },
+            ]}
+          />
+        </View>
+        <Text style={[styles.scoreValue, { color: colors.ink }]}>0.78</Text>
+      </View>
+      <Text style={[styles.exampleCaption, { color: colors.quiet }]}>
+        Contract example · not measured student data
+      </Text>
+    </View>
+  );
+}
+
+function DifficultyScale({ colors }: { colors: ReturnType<typeof useColors> }) {
+  const levels = [
+    { name: 'Easy', range: '0.00–0.39', color: colors.teal, surface: colors.paleTeal },
+    {
+      name: 'Moderate',
+      range: '0.40–0.69',
+      color: colors.amberInk,
+      surface: colors.paleAmber,
+    },
+    {
+      name: 'Difficult',
+      range: '0.70–1.00',
+      color: colors.coral,
+      surface: colors.paleCoral,
+    },
+  ];
+  return (
+    <View style={styles.scaleList}>
+      {levels.map((level) => (
+        <View
+          key={level.name}
+          style={[styles.scaleRow, { backgroundColor: level.surface }]}
+        >
+          <View style={[styles.scaleDot, { backgroundColor: level.color }]} />
+          <Text style={[styles.scaleName, { color: colors.ink }]}>
+            {level.name}
+          </Text>
+          <Text style={[styles.scaleRange, { color: level.color }]}>
+            {level.range}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function CourseChip({
+  course,
+  selected,
+  colors,
+  onPress,
+}: {
+  course: { name: CourseName; icon: IoniconName };
+  selected: boolean;
+  colors: ReturnType<typeof useColors>;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`Select ${course.name}`}
+      testID={`course-chip-${course.name.toLowerCase().replaceAll(' ', '-')}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.courseChip,
+        {
+          backgroundColor: selected ? colors.deep : colors.card,
+          borderColor: selected ? colors.deep : colors.line,
+        },
+        pressed && styles.pressed,
+      ]}
+    >
+      <Ionicons
+        name={course.icon}
+        size={16}
+        color={selected ? colors.white : colors.primary}
+      />
+      <Text
+        style={[
+          styles.courseChipText,
+          { color: selected ? colors.white : colors.ink },
+        ]}
+      >
+        {course.name}
+      </Text>
+    </Pressable>
+  );
+}
+
+function CourseCard({
+  course,
+  selected,
+  colors,
+  accentIndex,
+  onPress,
+}: {
+  course: { name: CourseName; icon: IoniconName };
+  selected: boolean;
+  colors: ReturnType<typeof useColors>;
+  accentIndex: number;
+  onPress: () => void;
+}) {
+  const accentSurfaces = [
+    colors.paleBlue,
+    colors.paleTeal,
+    colors.paleAmber,
+    colors.paleCoral,
+  ];
+  const accentColors = [
+    colors.primary,
+    colors.teal,
+    colors.amberInk,
+    colors.coral,
+  ];
+  const colorIndex = accentIndex % accentSurfaces.length;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      testID={`course-card-${course.name.toLowerCase().replaceAll(' ', '-')}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.courseCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: selected ? colors.primary : colors.line,
+        },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.courseIcon,
+          { backgroundColor: accentSurfaces[colorIndex] },
+        ]}
+      >
+        <Ionicons
+          name={course.icon}
+          size={21}
+          color={accentColors[colorIndex]}
+        />
+      </View>
+      <Text style={[styles.courseName, { color: colors.ink }]}>
+        {course.name}
+      </Text>
+      <Text style={[styles.courseMeta, { color: colors.softInk }]}>
+        STEM course
+      </Text>
+      <View style={styles.courseCardFooter}>
+        <Text
+          style={[
+            styles.courseSelectedText,
+            { color: selected ? colors.primary : colors.quiet },
+          ]}
+        >
+          {selected ? 'Selected' : 'Choose course'}
+        </Text>
+        <Ionicons
+          name={selected ? 'checkmark-circle' : 'arrow-forward-circle-outline'}
+          size={18}
+          color={selected ? colors.primary : colors.quiet}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
+function TopicTag({
+  label,
+  colors,
+}: {
+  label: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={[styles.topicTag, { backgroundColor: colors.paleBlue }]}>
+      <Text style={[styles.topicChipText, { color: colors.primary }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function SelectableTopic({
+  label,
+  selected,
+  colors,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  colors: ReturnType<typeof useColors>;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      testID={`topic-${label.toLowerCase()}`}
+      onPress={onPress}
+      style={[
+        styles.topicTag,
+        {
+          backgroundColor: selected ? colors.paleBlue : colors.secondary,
+          borderColor: selected ? colors.primary : colors.line,
+          borderWidth: 1,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.topicChipText,
+          { color: selected ? colors.primary : colors.softInk },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function NavigationButton({
   label,
-  name,
+  icon,
   active,
   colors,
   onPress,
 }: {
   label: string;
-  name: 'home' | 'calendar' | 'users' | 'bell';
+  icon: IoniconName;
   active: boolean;
   colors: ReturnType<typeof useColors>;
   onPress: () => void;
@@ -511,150 +1224,86 @@ function NavigationButton({
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
-      testID={`tab-${name}`}
+      testID={`tab-${label.toLowerCase()}`}
       onPress={onPress}
       style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
     >
-      <Feather
-        name={name}
-        size={19}
-        color={active ? colors.lavenderEnd : colors.quiet}
+      <Ionicons
+        name={icon}
+        size={21}
+        color={active ? colors.primary : colors.quiet}
       />
+      <Text
+        style={[
+          styles.navLabel,
+          { color: active ? colors.primary : colors.quiet },
+        ]}
+      >
+        {label}
+      </Text>
       {active ? (
-        <View style={[styles.activeDot, { backgroundColor: colors.lavenderEnd }]} />
+        <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
       ) : null}
     </Pressable>
   );
 }
 
-function InfoModal({
-  type,
+function ProfileModal({
+  visible,
   colors,
-  savedAppointment,
   onClose,
-  onSave,
 }: {
-  type: ModalType;
+  visible: boolean;
   colors: ReturnType<typeof useColors>;
-  savedAppointment: boolean;
   onClose: () => void;
-  onSave: () => void;
 }) {
-  if (!type) return null;
-
-  const isAppointment = type === 'appointment';
-  const isProfile = type === 'profile';
-
   return (
     <Modal
-      visible
+      visible={visible}
       transparent
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
     >
       <Pressable
-        style={[styles.modalScrim, { backgroundColor: colors.modalScrim }]}
+        style={[styles.modalScrim, { backgroundColor: colors.scrim }]}
         onPress={onClose}
       >
         <Pressable
           onPress={(event) => event.stopPropagation()}
           style={[
-            styles.modalCard,
-            { backgroundColor: colors.background, borderColor: colors.line },
+            styles.profileModal,
+            { backgroundColor: colors.card, borderColor: colors.line },
           ]}
         >
-          <View style={styles.modalTop}>
-            <View style={{ flex: 1 }} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              testID="close-modal"
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.closeButton,
-                { backgroundColor: colors.card },
-                pressed && styles.pressed,
-              ]}
-            >
-              <Feather name="x" size={18} color={colors.ink} />
-            </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close profile"
+            testID="close-profile"
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.modalClose,
+              { backgroundColor: colors.secondary },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="close" size={18} color={colors.ink} />
+          </Pressable>
+          <View style={[styles.profileAvatar, { backgroundColor: colors.paleBlue }]}>
+            <Ionicons name="person-outline" size={27} color={colors.primary} />
           </View>
-
-          {isAppointment ? (
-            <>
-              <View style={[styles.modalHeroIcon, { backgroundColor: colors.paleBlue }]}>
-                <Ionicons name="document-text" size={23} color={colors.aquaDeep} />
-              </View>
-              <Text style={[styles.modalTitle, { color: colors.ink }]}>
-                Family Therapy
-              </Text>
-              <Text style={[styles.modalCopy, { color: colors.softInk }]}>
-                Tomorrow · 5:30pm to 6:30pm
-              </Text>
-              <Text style={[styles.modalPrice, { color: colors.ink }]}>
-                $100 / dollar
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                testID="modal-save-appointment"
-                onPress={onSave}
-                style={({ pressed }) => [
-                  styles.primaryAction,
-                  { backgroundColor: colors.lavenderEnd },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Ionicons
-                  name={savedAppointment ? 'bookmark' : 'bookmark-outline'}
-                  size={16}
-                  color={colors.primaryForeground}
-                />
-                <Text style={styles.primaryActionText}>
-                  {savedAppointment ? 'Saved' : 'Save appointment'}
-                </Text>
-              </Pressable>
-            </>
-          ) : isProfile ? (
-            <>
-              <Image
-                source={profileImage}
-                style={[
-                  styles.modalAvatar,
-                  { backgroundColor: colors.profilePlaceholder },
-                ]}
-                contentFit="cover"
-              />
-              <Text style={[styles.modalTitle, { color: colors.ink }]}>Alexander</Text>
-              <Text style={[styles.modalCopy, { color: colors.softInk }]}>
-                Your profile and practice details
-              </Text>
-              <View style={[styles.modalNote, { backgroundColor: colors.paleBlue }]}>
-                <Feather name="shield" size={16} color={colors.aquaDeep} />
-                <Text style={[styles.modalNoteText, { color: colors.ink }]}>
-                  Your information remains private.
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={[styles.modalHeroIcon, { backgroundColor: colors.paleBlue }]}>
-                <Feather name="shield" size={22} color={colors.aquaDeep} />
-              </View>
-              <Text style={[styles.modalTitle, { color: colors.ink }]}>
-                Private and protected
-              </Text>
-              <Text style={[styles.modalCopy, { color: colors.softInk }]}>
-                Your practice information stays confidential.
-              </Text>
-              <View style={[styles.modalNote, { backgroundColor: colors.paleLavender }]}>
-                <Feather name="lock" size={16} color={colors.lavenderEnd} />
-                <Text style={[styles.modalNoteText, { color: colors.ink }]}>
-                  Only you can access this dashboard.
-                </Text>
-              </View>
-            </>
-          )}
+          <Text style={[styles.profileTitle, { color: colors.ink }]}>
+            Student view
+          </Text>
+          <Text style={[styles.profileCopy, { color: colors.softInk }]}>
+            Your personal quiz attempts and study recommendations belong to your account.
+          </Text>
+          <View style={[styles.roleBadge, { backgroundColor: colors.paleTeal }]}>
+            <Ionicons name="school-outline" size={15} color={colors.teal} />
+            <Text style={[styles.roleBadgeText, { color: colors.teal }]}>
+              STUDENT
+            </Text>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -666,343 +1315,757 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 23,
+    paddingHorizontal: 21,
   },
-  topBar: {
-    height: 42,
+  header: {
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  menuButton: {
-    width: 42,
-    height: 42,
-    borderWidth: 1,
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandIcon: {
+    width: 39,
+    height: 39,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 15,
+    lineHeight: 19,
+    letterSpacing: -0.25,
+  },
+  brandCaption: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 1,
+  },
+  profileButton: {
+    width: 39,
+    height: 39,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatar: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
+  page: {
+    gap: 17,
   },
-  onlineDot: {
-    position: 'absolute',
-    top: -1,
-    right: -1,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
+  welcome: {
+    marginBottom: 2,
   },
-  greeting: {
-    marginTop: 18,
-  },
-  greetingTitle: {
+  eyebrow: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 25,
-    lineHeight: 30,
-    letterSpacing: -0.7,
+    fontSize: 9,
+    lineHeight: 14,
+    letterSpacing: 1.1,
   },
-  greetingName: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 21,
-    lineHeight: 27,
-    letterSpacing: -0.4,
+  title: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 27,
+    lineHeight: 34,
+    letterSpacing: -0.8,
+    marginTop: 3,
   },
-  privacyCaption: {
+  subtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 18,
     marginTop: 4,
+    maxWidth: 330,
+  },
+  heroCard: {
+    borderRadius: 24,
+    minHeight: 207,
+    padding: 19,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  heroOrbitOne: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    top: -77,
+    right: -27,
+  },
+  heroOrbitTwo: {
+    position: 'absolute',
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    bottom: -43,
+    right: 32,
+  },
+  heroIcon: {
+    position: 'absolute',
+    right: 20,
+    top: 21,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEyebrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    lineHeight: 14,
+    letterSpacing: 0.9,
+  },
+  heroTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 21,
+    lineHeight: 28,
+    letterSpacing: -0.35,
+    marginTop: 7,
+  },
+  heroCopy: {
+    maxWidth: 228,
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: 17,
+    marginTop: 2,
   },
-  metricsRow: {
-    gap: 12,
-    paddingTop: 21,
-    paddingBottom: 2,
-    paddingRight: 4,
-  },
-  metricCard: {
-    width: 166,
-    height: 145,
-    borderRadius: 21,
-    overflow: 'hidden',
-    paddingHorizontal: 14,
-    paddingTop: 13,
-  },
-  metricHeading: {
+  heroAction: {
+    minHeight: 39,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 13,
+    borderRadius: 13,
+    marginTop: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
-  metricLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  metricValue: {
+  heroActionText: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 26,
-    lineHeight: 32,
-    marginTop: 1,
-    letterSpacing: -0.7,
+    fontSize: 11,
   },
-  artwork: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-  },
-  sectionHeading: {
+  sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 21,
-    marginBottom: 13,
+    alignItems: 'center',
+    marginTop: 2,
   },
   sectionTitle: {
     fontFamily: 'Inter_700Bold',
     fontSize: 16,
     lineHeight: 22,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
-  viewAll: {
-    fontFamily: 'Inter_500Medium',
+  sectionSubtext: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  linkText: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: 17,
   },
-  appointmentCard: {
+  inlineAction: {
+    marginTop: 9,
+  },
+  courseRail: {
+    gap: 8,
+    paddingRight: 5,
+  },
+  courseChip: {
     borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    paddingTop: 14,
-    paddingBottom: 12,
-  },
-  appointmentTop: {
+    borderRadius: 14,
+    minHeight: 38,
+    paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 7,
   },
-  appointmentIcon: {
+  courseChipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+  difficultyCard: {
+    borderWidth: 1,
+    borderRadius: 19,
+    padding: 14,
+  },
+  difficultyCardCompact: {
+    marginTop: 14,
+    padding: 12,
+  },
+  difficultyTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  difficultyTopic: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  topicIcon: {
+    width: 37,
+    height: 37,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  difficultyName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  difficultBadge: {
+    minHeight: 25,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  difficultBadgeText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 9,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 13,
+  },
+  scoreTrack: {
+    flex: 1,
+    height: 7,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  scoreFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  scoreValue: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    width: 31,
+    textAlign: 'right',
+  },
+  exampleCaption: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 8,
+  },
+  recommendationCard: {
+    borderWidth: 1,
+    borderRadius: 19,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 11,
+  },
+  recommendationIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendationBody: {
+    flex: 1,
+    paddingTop: 1,
+  },
+  recommendationTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  recommendationText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  pageHeading: {
+    marginBottom: 2,
+  },
+  previewNotice: {
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewNoticeText: {
+    flex: 1,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  courseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  courseCard: {
+    width: '48%',
+    minHeight: 142,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+  },
+  courseIcon: {
     width: 39,
     height: 39,
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  appointmentText: {
-    flex: 1,
-    marginLeft: 10,
+  courseName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 10,
   },
-  appointmentName: {
+  courseMeta: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  courseCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+    paddingTop: 9,
+  },
+  courseSelectedText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 9,
+  },
+  topicsCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 13,
+  },
+  topicsHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  smallIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topicsTitle: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
     lineHeight: 17,
   },
-  appointmentDate: {
+  topicTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 12,
+  },
+  topicTag: {
+    minHeight: 28,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topicChipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+  topicPlaceholder: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 12,
+  },
+  quizSetupCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+  },
+  setupTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 3,
+  },
+  largeIconBox: {
+    width: 43,
+    height: 43,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  topicPlaceholderChip: {
+    minHeight: 28,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  countOption: {
+    width: 42,
+    height: 35,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+  },
+  inlineNotice: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 12,
+  },
+  primaryButton: {
+    minHeight: 45,
+    borderRadius: 14,
+    marginTop: 17,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+  },
+  disabledButton: {
+    opacity: 0.45,
+  },
+  previewFootnote: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    lineHeight: 14,
+    textAlign: 'center',
+    marginTop: 9,
+  },
+  questionCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+  },
+  questionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  questionNumber: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  questionNumberText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+  questionCourse: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  sampleBadge: {
+    paddingHorizontal: 8,
+    minHeight: 22,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sampleBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 8,
+    letterSpacing: 0.5,
+  },
+  questionPrompt: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    lineHeight: 23,
+    marginTop: 18,
+  },
+  answerList: {
+    gap: 8,
+    marginTop: 14,
+  },
+  answerOption: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: 13,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  answerKey: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  answerKeyText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 10,
+  },
+  answerText: {
+    flex: 1,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+  },
+  confidenceRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  confidenceOption: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confidenceText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+  submittedCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  successIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submittedTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 17,
+    lineHeight: 23,
+    marginTop: 13,
+    textAlign: 'center',
+  },
+  submittedCopy: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  responseNote: {
+    width: '100%',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    marginTop: 18,
+  },
+  responseNoteText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 16,
+  },
+  secondaryButton: {
+    minHeight: 43,
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 13,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  secondaryButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+  },
+  insightCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  scaleList: {
+    gap: 7,
+    marginTop: 14,
+  },
+  scaleRow: {
+    minHeight: 36,
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scaleDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  scaleName: {
+    flex: 1,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+  scaleRange: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 10,
+  },
+  emptyCard: {
+    minHeight: 124,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 9,
+  },
+  emptyCopy: {
     fontFamily: 'Inter_400Regular',
     fontSize: 10,
     lineHeight: 15,
-    marginTop: 1,
+    textAlign: 'center',
+    marginTop: 2,
   },
-  bookmarkButton: {
-    width: 31,
-    height: 34,
+  navButton: {
+    minWidth: 60,
+    height: 49,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
-  appointmentTags: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 11,
-    paddingLeft: 3,
+  navLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 8,
+    lineHeight: 11,
   },
-  tag: {
-    minHeight: 25,
-    borderRadius: 13,
-    paddingHorizontal: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 9,
-    lineHeight: 13,
+  activeIndicator: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    bottom: -2,
   },
   bottomBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: 64,
+    height: 58,
     borderTopWidth: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-around',
-    paddingTop: 12,
-  },
-  navButton: {
-    width: 54,
-    height: 37,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    position: 'absolute',
-    bottom: 1,
-  },
-  pressed: {
-    opacity: 0.76,
-  },
-  secondaryContent: {
-    paddingTop: 34,
-  },
-  pageTitle: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 26,
-    lineHeight: 34,
-    letterSpacing: -0.7,
-  },
-  pageSubtitle: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 3,
-    marginBottom: 22,
-  },
-  clientSummary: {
-    minHeight: 178,
-    borderRadius: 22,
-    overflow: 'hidden',
-    padding: 18,
-  },
-  clientCount: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 38,
-    lineHeight: 48,
-    marginTop: 12,
-  },
-  clientLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-  },
-  emptyNotice: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 31,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    marginTop: 18,
-  },
-  emptyIcon: {
-    width: 47,
-    height: 47,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-    lineHeight: 21,
-    marginTop: 13,
-  },
-  emptyCopy: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: 3,
+    paddingTop: 5,
   },
   modalScrim: {
     flex: 1,
-    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
     paddingHorizontal: 13,
     paddingBottom: 14,
   },
-  modalCard: {
+  profileModal: {
     borderWidth: 1,
-    borderRadius: 26,
-    padding: 20,
-    paddingBottom: 24,
+    borderRadius: 25,
+    padding: 22,
+    paddingBottom: 25,
     alignItems: 'center',
   },
-  modalTop: {
-    width: '100%',
+  modalClose: {
+    width: 33,
+    height: 33,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+  },
+  profileAvatar: {
+    width: 62,
+    height: 62,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  profileTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 18,
+    lineHeight: 24,
+    marginTop: 13,
+  },
+  profileCopy: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 17,
+    textAlign: 'center',
+    maxWidth: 270,
+    marginTop: 4,
+  },
+  roleBadge: {
+    minHeight: 29,
+    paddingHorizontal: 11,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalHeroIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 13,
-  },
-  modalAvatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 19,
-    lineHeight: 26,
-    textAlign: 'center',
-  },
-  modalCopy: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  modalPrice: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    lineHeight: 20,
+    gap: 6,
     marginTop: 16,
   },
-  primaryAction: {
-    minHeight: 46,
-    width: '100%',
-    borderRadius: 15,
-    marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  roleBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.7,
   },
-  primaryActionText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-  },
-  modalNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    borderRadius: 13,
-    paddingVertical: 11,
-    paddingHorizontal: 13,
-    marginTop: 19,
-    width: '100%',
-  },
-  modalNoteText: {
-    flex: 1,
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    lineHeight: 16,
+  pressed: {
+    opacity: 0.76,
   },
 });
