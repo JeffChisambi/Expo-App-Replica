@@ -8,4 +8,7 @@
 
 export * from './course';
 export * from './courseCatalog';
+export * from './getCourseQuestionsParams';
 export * from './healthStatus';
+export * from './question';
+export * from './questionCatalog';

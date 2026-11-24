@@ -58,7 +58,7 @@ Run every command in this section from the **repository root** (`Expo-App-Replic
 
    For Expo Go on a physical phone, replace `localhost` with your computer’s LAN IP, for example `http://192.168.1.20:3001`.
 
-5. Create the database schema and seed courses:
+5. Create the database schema and seed the course catalog plus the 200-question CEN 1103 bank:
 
    ```powershell
    pnpm --filter @stem-smartstudy/db push
@@ -79,6 +79,9 @@ The backend listens on `http://localhost:3001` and exposes:
 
 - `GET /api/healthz`
 - `GET /api/courses`
+- `GET /api/courses/elementary-principles-of-electricity/questions?limit=10`
+- `POST /api/learning/responses` — records anonymous quiz responses
+- `GET /api/learning/topic-difficulty` — ranks topics by aggregate accuracy
 
 Verify it is running:
 
@@ -132,4 +135,6 @@ pnpm --filter @stem-smartstudy/api start
 
 - `.env` files are ignored by Git. Only `.env.example` templates are committed.
 - The study dashboard currently stores no personal account data and requires no sign-in.
+- The adaptive learning model is an explainable topic-difficulty model: it uses anonymous response correctness, confidence, and response time to identify topics with the lowest aggregate accuracy. It does not train or retain personal profiles.
+- If the mobile app shows “The course catalog is unavailable,” ensure `apps/api/.env` exists with a valid `DATABASE_URL`, run the two database commands above, then start `pnpm dev:backend`. On a physical phone, use your computer's LAN IP in `apps/mobile/.env`, not `localhost`.
 - Restrict `CORS_ORIGIN` for browser deployments.

@@ -8,9 +8,9 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
-    "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "seed": "tsx src/seed.ts"
+    "push": "dotenv -e ../../apps/api/.env -- drizzle-kit push --config ./drizzle.config.ts",
+    "push-force": "dotenv -e ../../apps/api/.env -- drizzle-kit push --force --config ./drizzle.config.ts",
+    "seed": "dotenv -e ../../apps/api/.env -- tsx src/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.23.1",
+    "dotenv-cli": "^8.0.0",
     "drizzle-kit": "^0.31.11",
     "tsx": "catalog:"
   }

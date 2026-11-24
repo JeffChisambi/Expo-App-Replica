@@ -22,7 +22,9 @@ import type {
 
 import type {
   CourseCatalog,
-  HealthStatus
+  GetCourseQuestionsParams,
+  HealthStatus,
+  QuestionCatalog
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -242,6 +244,122 @@ export function useGetCourses<TData = Awaited<ReturnType<typeof getCourses>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCoursesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCourseQuestionsUrl = (courseId: string,
+    params?: GetCourseQuestionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/courses/${courseId}/questions?${stringifiedParams}` : `/api/courses/${courseId}/questions`
+}
+
+/**
+ * @summary Get random course questions for a quiz
+ */
+export const getCourseQuestions = async (courseId: string,
+    params?: GetCourseQuestionsParams, options?: Parameters<typeof customFetch>[1]): Promise<QuestionCatalog> => {
+
+  return customFetch<QuestionCatalog>(getGetCourseQuestionsUrl(courseId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCourseQuestionsQueryKey = (courseId: string,
+    params?: GetCourseQuestionsParams,) => {
+    return [
+    `/api/courses/${courseId}/questions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCourseQuestionsQueryOptions = <TData = Awaited<ReturnType<typeof getCourseQuestions>>, TError = ErrorType<unknown>>(courseId: string,
+    params?: GetCourseQuestionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCourseQuestionsQueryKey(courseId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCourseQuestions>>> = ({ signal }) => getCourseQuestions(courseId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCourseQuestionsQueryResult = NonNullable<Awaited<ReturnType<typeof getCourseQuestions>>>
+export type GetCourseQuestionsQueryError = ErrorType<unknown>
+
+
+export function useGetCourseQuestions<TData = Awaited<ReturnType<typeof getCourseQuestions>>, TError = ErrorType<unknown>>(
+ courseId: string,
+    params: undefined |  GetCourseQuestionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCourseQuestions>>,
+          TError,
+          Awaited<ReturnType<typeof getCourseQuestions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCourseQuestions<TData = Awaited<ReturnType<typeof getCourseQuestions>>, TError = ErrorType<unknown>>(
+ courseId: string,
+    params?: GetCourseQuestionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCourseQuestions>>,
+          TError,
+          Awaited<ReturnType<typeof getCourseQuestions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCourseQuestions<TData = Awaited<ReturnType<typeof getCourseQuestions>>, TError = ErrorType<unknown>>(
+ courseId: string,
+    params?: GetCourseQuestionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get random course questions for a quiz
+ */
+
+export function useGetCourseQuestions<TData = Awaited<ReturnType<typeof getCourseQuestions>>, TError = ErrorType<unknown>>(
+ courseId: string,
+    params?: GetCourseQuestionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCourseQuestions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCourseQuestionsQueryOptions(courseId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

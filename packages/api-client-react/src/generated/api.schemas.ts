@@ -19,3 +19,28 @@ export interface CourseCatalog {
   courses: Course[];
 }
 
+export interface Question {
+  id: string;
+  mainTopic: string;
+  subtopic: string;
+  questionText: string;
+  options: string[];
+  correctOption: string;
+  explanation: string;
+  difficulty: string;
+  marks: number;
+  estimatedTimeSeconds: number;
+}
+
+export interface QuestionCatalog {
+  questions: Question[];
+}
+
+export type GetCourseQuestionsParams = {
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+

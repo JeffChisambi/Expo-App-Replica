@@ -28,6 +28,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CourseCatalog"
+  /courses/{courseId}/questions:
+    get:
+      operationId: getCourseQuestions
+      summary: Get random course questions for a quiz
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Quiz questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCatalog"
 components:
   schemas:
     HealthStatus:
@@ -54,3 +78,37 @@ components:
           items:
             $ref: "#/components/schemas/Course"
       required: [courses]
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+        mainTopic:
+          type: string
+        subtopic:
+          type: string
+        questionText:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctOption:
+          type: string
+        explanation:
+          type: string
+        difficulty:
+          type: string
+        marks:
+          type: integer
+        estimatedTimeSeconds:
+          type: integer
+      required: [id, mainTopic, subtopic, questionText, options, correctOption, explanation, difficulty, marks, estimatedTimeSeconds]
+    QuestionCatalog:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+      required: [questions]

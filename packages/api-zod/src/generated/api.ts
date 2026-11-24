@@ -28,3 +28,35 @@ export const GetCoursesResponse = zod.object({
 })
 
 
+/**
+ * @summary Get random course questions for a quiz
+ */
+export const GetCourseQuestionsParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const getCourseQuestionsQueryLimitDefault = 10;
+export const getCourseQuestionsQueryLimitMax = 50;
+
+
+
+export const GetCourseQuestionsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(getCourseQuestionsQueryLimitMax).default(getCourseQuestionsQueryLimitDefault)
+})
+
+export const GetCourseQuestionsResponse = zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "mainTopic": zod.string(),
+  "subtopic": zod.string(),
+  "questionText": zod.string(),
+  "options": zod.array(zod.string()),
+  "correctOption": zod.string(),
+  "explanation": zod.string(),
+  "difficulty": zod.string(),
+  "marks": zod.int(),
+  "estimatedTimeSeconds": zod.int()
+}))
+})
+
+
