@@ -39,6 +39,8 @@ node_modules
 /coverage
 /libpeerconnection.log
 npm-debug.log
+backend.out.log
+backend.err.log
 yarn-error.log
 testem.log
 /typings
