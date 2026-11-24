@@ -18,32 +18,24 @@ import { officialLogoXml } from '@/constants/officialLogo';
 
 type TabKey = 'home' | 'courses' | 'quiz' | 'insights';
 type CourseName =
-  | 'Mathematics'
-  | 'Physics'
-  | 'Chemistry'
-  | 'Biology'
-  | 'Computer Science'
-  | 'Engineering';
+  | 'Elementary Principles of Electricity and Magnetism'
+  | 'Programming'
+  | 'Operating Systems';
 type Confidence = 'low' | 'medium' | 'high';
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const courses: { name: CourseName; icon: IoniconName }[] = [
-  { name: 'Mathematics', icon: 'calculator-outline' },
-  { name: 'Physics', icon: 'planet-outline' },
-  { name: 'Chemistry', icon: 'flask-outline' },
-  { name: 'Biology', icon: 'leaf-outline' },
-  { name: 'Computer Science', icon: 'code-slash-outline' },
-  { name: 'Engineering', icon: 'construct-outline' },
+  {
+    name: 'Elementary Principles of Electricity and Magnetism',
+    icon: 'flash-outline',
+  },
+  { name: 'Programming', icon: 'code-slash-outline' },
+  { name: 'Operating Systems', icon: 'hardware-chip-outline' },
 ];
 
 const sampleQuestion = {
-  prompt: 'Which expression is equivalent to 2(x + 3)?',
-  options: [
-    { key: 'A', text: '2x + 3' },
-    { key: 'B', text: '2x + 6' },
-    { key: 'C', text: 'x + 6' },
-    { key: 'D', text: '2x + 9' },
-  ],
+  prompt: 'Course questions will appear here once content is available.',
+  options: [] as { key: string; text: string }[],
 };
 
 export default function SmartStudyDashboard() {
@@ -51,8 +43,7 @@ export default function SmartStudyDashboard() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedCourse, setSelectedCourse] =
-    useState<CourseName>('Mathematics');
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(['Algebra']);
+    useState<CourseName>('Elementary Principles of Electricity and Magnetism');
   const [questionCount, setQuestionCount] = useState(10);
   const [quizStage, setQuizStage] = useState<'setup' | 'question' | 'submitted'>(
     'setup',
@@ -68,16 +59,9 @@ export default function SmartStudyDashboard() {
     Platform.OS === 'web' ? Math.max(34, insets.bottom) : insets.bottom;
 
   const startQuiz = () => {
-    if (selectedCourse !== 'Mathematics') {
-      setSampleNotice(
-        'The contract sample includes a Mathematics question. Other question sets load from the question bank.',
-      );
-      return;
-    }
-    setSampleNotice('');
-    setSelectedOption(null);
-    setConfidence(null);
-    setQuizStage('question');
+    setSampleNotice(
+      `Question sets for ${selectedCourse} will appear when course content is available.`,
+    );
   };
 
   const openQuizSetup = () => {
@@ -86,14 +70,6 @@ export default function SmartStudyDashboard() {
     setConfidence(null);
     setSampleNotice('');
     setActiveTab('quiz');
-  };
-
-  const toggleTopic = (topic: string) => {
-    setSelectedTopics((current) =>
-      current.includes(topic)
-        ? current.filter((item) => item !== topic)
-        : [...current, topic],
-    );
   };
 
   return (
@@ -153,8 +129,6 @@ export default function SmartStudyDashboard() {
               setSelectedCourse(course);
               setSampleNotice('');
             }}
-            selectedTopics={selectedTopics}
-            onToggleTopic={toggleTopic}
             questionCount={questionCount}
             onQuestionCount={setQuestionCount}
             stage={quizStage}
@@ -174,6 +148,7 @@ export default function SmartStudyDashboard() {
         ) : (
           <InsightsScreen
             colors={colors}
+            selectedCourse={selectedCourse}
             onStartQuiz={openQuizSetup}
           />
         )}
@@ -358,7 +333,7 @@ function HomeScreen({
         </Pressable>
       </View>
 
-      <DifficultyExample colors={colors} />
+      <DifficultyExample colors={colors} courseName={selectedCourse} />
 
       <View
         style={[
@@ -416,7 +391,7 @@ function CoursesScreen({
       <View style={[styles.previewNotice, { backgroundColor: colors.paleAmber }]}>
         <Ionicons name="information-circle-outline" size={17} color={colors.amberInk} />
         <Text style={[styles.previewNoticeText, { color: colors.amberInk }]}>
-          Course names shown are examples from the API contract.
+          These are the courses currently available.
         </Text>
       </View>
 
@@ -453,19 +428,9 @@ function CoursesScreen({
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.quiet} />
         </View>
-        {selectedCourse === 'Mathematics' ? (
-          <View style={styles.topicTags}>
-            <TopicTag label="Algebra" colors={colors} />
-            <TopicTag label="Geometry" colors={colors} />
-            <Text style={[styles.exampleCaption, { color: colors.quiet }]}>
-              Contract examples
-            </Text>
-          </View>
-        ) : (
-          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
-            Choose a course topic when its course data is available.
-          </Text>
-        )}
+        <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
+          Course topics will appear here when they are available.
+        </Text>
       </View>
     </View>
   );
@@ -475,8 +440,6 @@ function QuizScreen({
   colors,
   selectedCourse,
   onSelectCourse,
-  selectedTopics,
-  onToggleTopic,
   questionCount,
   onQuestionCount,
   stage,
@@ -492,8 +455,6 @@ function QuizScreen({
   colors: ReturnType<typeof useColors>;
   selectedCourse: CourseName;
   onSelectCourse: (course: CourseName) => void;
-  selectedTopics: string[];
-  onToggleTopic: (topic: string) => void;
   questionCount: number;
   onQuestionCount: (count: number) => void;
   stage: 'setup' | 'question' | 'submitted';
@@ -568,29 +529,9 @@ function QuizScreen({
 
           <Text style={[styles.formLabel, { color: colors.ink }]}>Topics</Text>
           <View style={styles.topicTags}>
-            {(selectedCourse === 'Mathematics'
-              ? ['Algebra', 'Geometry']
-              : ['All available topics']
-            ).map((topic) =>
-              topic === 'All available topics' ? (
-                <View
-                  key={topic}
-                  style={[styles.topicPlaceholderChip, { backgroundColor: colors.secondary }]}
-                >
-                  <Text style={[styles.topicChipText, { color: colors.softInk }]}>
-                    {topic}
-                  </Text>
-                </View>
-              ) : (
-                <SelectableTopic
-                  key={topic}
-                  label={topic}
-                  selected={selectedTopics.includes(topic)}
-                  colors={colors}
-                  onPress={() => onToggleTopic(topic)}
-                />
-              ),
-            )}
+          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
+            Topics will appear once course content is available.
+          </Text>
           </View>
 
           <Text style={[styles.formLabel, { color: colors.ink }]}>
@@ -637,19 +578,15 @@ function QuizScreen({
             accessibilityRole="button"
             testID="start-quiz-preview"
             onPress={onStart}
-            disabled={selectedCourse === 'Mathematics' && selectedTopics.length === 0}
             style={({ pressed }) => [
               styles.primaryButton,
               { backgroundColor: colors.primary },
-              selectedCourse === 'Mathematics' &&
-                selectedTopics.length === 0 &&
-                styles.disabledButton,
               pressed && styles.pressed,
             ]}
           >
             <Ionicons name="play" size={16} color={colors.white} />
             <Text style={[styles.primaryButtonText, { color: colors.white }]}>
-              Start sample quiz
+              Check question availability
             </Text>
           </Pressable>
           <Text style={[styles.previewFootnote, { color: colors.quiet }]}>
@@ -671,10 +608,10 @@ function QuizScreen({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.questionCourse, { color: colors.ink }]}>
-                Mathematics · Algebra
+                {selectedCourse} · Question preview
               </Text>
               <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-                Sample question from the API contract
+                Course questions are not configured yet.
               </Text>
             </View>
             <View style={[styles.sampleBadge, { backgroundColor: colors.paleAmber }]}>
@@ -834,9 +771,11 @@ function QuizScreen({
 
 function InsightsScreen({
   colors,
+  selectedCourse,
   onStartQuiz,
 }: {
   colors: ReturnType<typeof useColors>;
+  selectedCourse: CourseName;
   onStartQuiz: () => void;
 }) {
   return (
@@ -874,7 +813,11 @@ function InsightsScreen({
         </View>
 
         <DifficultyScale colors={colors} />
-        <DifficultyExample colors={colors} compact />
+        <DifficultyExample
+          colors={colors}
+          courseName={selectedCourse}
+          compact
+        />
       </View>
 
       <View style={styles.sectionHeader}>
@@ -939,11 +882,14 @@ function InsightsScreen({
 
 function DifficultyExample({
   colors,
+  courseName,
   compact = false,
 }: {
   colors: ReturnType<typeof useColors>;
+  courseName: CourseName;
   compact?: boolean;
 }) {
+  const courseIcon = courses.find((course) => course.name === courseName)?.icon;
   return (
     <View
       style={[
@@ -955,14 +901,18 @@ function DifficultyExample({
       <View style={styles.difficultyTop}>
         <View style={styles.difficultyTopic}>
           <View style={[styles.topicIcon, { backgroundColor: colors.paleAmber }]}>
-            <Ionicons name="calculator-outline" size={17} color={colors.amberInk} />
+            <Ionicons
+              name={courseIcon ?? 'book-outline'}
+              size={17}
+              color={colors.primary}
+            />
           </View>
           <View>
             <Text style={[styles.difficultyName, { color: colors.ink }]}>
-              Algebra
+              Example topic
             </Text>
             <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-              Mathematics
+              {courseName}
             </Text>
           </View>
         </View>
