@@ -977,7 +977,7 @@ function DifficultyExample({
           <View
             style={[
               styles.scoreFill,
-              { backgroundColor: colors.coral, width: '78%' },
+              { backgroundColor: colors.amber, width: '78%' },
             ]}
           />
         </View>

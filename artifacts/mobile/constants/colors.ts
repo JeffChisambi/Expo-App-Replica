@@ -12,66 +12,71 @@
  * The useColors() hook will automatically pick it up.
  */
 
+const brandBlue = '#2080BD';
+const brandYellow = '#F2E51A';
+const black = '#000000';
+const white = '#FFFFFF';
+
 const colors = {
   light: {
-    // Legacy aliases (kept for backward compatibility)
-    text: '#18243A',
-    tint: '#4668E8',
+    // Legacy aliases map to the approved four-color brand palette.
+    text: black,
+    tint: brandBlue,
 
     // Core surfaces
-    background: '#F7F8FC',
-    foreground: '#18243A',
+    background: white,
+    foreground: black,
 
     // Cards / elevated surfaces
-    card: '#FFFFFF',
-    cardForeground: '#18243A',
+    card: white,
+    cardForeground: black,
 
     // Primary action color (buttons, links, active states)
-    primary: '#4668E8',
-    primaryForeground: '#ffffff',
+    primary: brandBlue,
+    primaryForeground: white,
 
     // Secondary / less-emphasis interactive surfaces
-    secondary: '#F0F3F8',
-    secondaryForeground: '#18243A',
+    secondary: '#0000000A',
+    secondaryForeground: black,
 
     // Muted / subdued elements (dividers, timestamps, placeholders)
-    muted: '#F0F3F8',
-    mutedForeground: '#68768C',
+    muted: white,
+    mutedForeground: '#000000A6',
 
     // Accent highlights (badges, selected items, focus rings)
-    accent: '#EAF0FF',
-    accentForeground: '#18243A',
+    accent: brandYellow,
+    accentForeground: black,
 
     // Destructive actions (delete, error states)
-    destructive: '#ef4444',
-    destructiveForeground: '#ffffff',
+    destructive: black,
+    destructiveForeground: white,
 
     // Borders and input outlines
-    border: '#E5EAF2',
-    input: '#E5EAF2',
+    border: '#00000026',
+    input: '#0000004D',
 
     // STEM SmartStudy palette
-    ink: '#18243A',
-    softInk: '#68768C',
-    quiet: '#98A3B4',
-    line: '#E5EAF2',
-    deep: '#192A49',
-    heroStart: '#3858C9',
-    heroEnd: '#263F99',
-    heroAccent: '#FFD16A',
-    heroSoft: '#D7E1FF',
-    teal: '#168C81',
-    amber: '#F1B84C',
-    amberInk: '#9C6A12',
-    coral: '#E56D55',
-    paleBlue: '#EAF0FF',
-    paleTeal: '#E5F5F1',
-    paleAmber: '#FFF5DE',
-    paleCoral: '#FFF0EB',
-    bottomBar: '#FFFFFF',
-    white: '#FFFFFF',
-    scrim: '#14203F75',
-    heroOverlay: '#FFFFFF14',
+    ink: black,
+    softInk: '#000000A6',
+    quiet: '#00000080',
+    line: '#00000026',
+    deep: brandBlue,
+    heroStart: brandBlue,
+    heroEnd: brandBlue,
+    heroAccent: brandYellow,
+    heroSoft: white,
+    teal: brandBlue,
+    amber: brandYellow,
+    amberInk: black,
+    coral: brandBlue,
+    paleBlue: brandYellow,
+    paleTeal: brandYellow,
+    paleAmber: brandYellow,
+    paleCoral: brandYellow,
+    bottomBar: white,
+    white,
+    scrim: '#00000080',
+    heroOverlay: '#FFFFFF1F',
     heroOverlaySoft: '#FFFFFF0F',
   },
 
