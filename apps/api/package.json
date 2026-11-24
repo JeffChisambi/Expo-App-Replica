@@ -10,8 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.96",
-    "@clerk/shared": "^4.48.3",
     "@stem-smartstudy/api-zod": "workspace:*",
     "@stem-smartstudy/db": "workspace:*",
     "cors": "^2.8.6",

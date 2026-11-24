@@ -1,11 +1,10 @@
-import { requireStudent } from "../middlewares/requireStudent";
 import { db, coursesTable } from "@stem-smartstudy/db";
 import { asc } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-router.get("/courses", requireStudent, async (_req, res) => {
+router.get("/courses", async (_req, res) => {
   const courses = await db
     .select({
       id: coursesTable.id,

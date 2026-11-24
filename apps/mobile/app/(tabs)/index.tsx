@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useClerk, useUser } from '@clerk/expo';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
@@ -16,7 +15,6 @@ import {
 import Svg, { Path, SvgXml } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetCourses, type Course as ApiCourse } from '@stem-smartstudy/api-client-react';
-import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { officialLogoXml } from '@/constants/officialLogo';
 
@@ -40,9 +38,6 @@ const sampleQuestion = {
 export default function SmartStudyDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useUser();
-  const { signOut } = useClerk();
   const coursesQuery = useGetCourses({ query: { retry: 1 } });
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedCourse, setSelectedCourse] =
@@ -267,13 +262,7 @@ export default function SmartStudyDashboard() {
       <ProfileModal
         visible={profileOpen}
         colors={colors}
-        studentEmail={user?.primaryEmailAddress?.emailAddress ?? ''}
         onClose={() => setProfileOpen(false)}
-        onSignOut={async () => {
-          setProfileOpen(false);
-          await signOut();
-          router.replace('/(auth)');
-        }}
       />
     </View>
   );
@@ -1427,15 +1416,11 @@ function ProfileGlyph({ size, color }: { size: number; color: string }) {
 function ProfileModal({
   visible,
   colors,
-  studentEmail,
   onClose,
-  onSignOut,
 }: {
   visible: boolean;
   colors: ReturnType<typeof useColors>;
-  studentEmail: string;
   onClose: () => void;
-  onSignOut: () => void;
 }) {
   return (
     <Modal
@@ -1473,10 +1458,10 @@ function ProfileModal({
             <ProfileGlyph size={30} color={colors.primary} />
           </View>
           <Text style={[styles.profileTitle, { color: colors.ink }]}>
-            Student account
+            Study profile
           </Text>
           <Text style={[styles.profileCopy, { color: colors.softInk }]}>
-            {studentEmail || 'Your signed-in student account'}
+            Your progress is stored locally on this device.
           </Text>
           <View style={[styles.roleBadge, { backgroundColor: colors.paleTeal }]}>
             <Ionicons name="school-outline" size={15} color={colors.teal} />
@@ -1484,21 +1469,6 @@ function ProfileModal({
               STUDENT
             </Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            testID="student-sign-out"
-            onPress={onSignOut}
-            style={({ pressed }) => [
-              styles.signOutButton,
-              { backgroundColor: colors.paleBlue },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons name="log-out-outline" size={17} color={colors.primary} />
-            <Text style={[styles.signOutText, { color: colors.primary }]}>
-              Sign out
-            </Text>
-          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
