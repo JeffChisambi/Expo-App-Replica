@@ -83,10 +83,12 @@ Invoke-RestMethod http://localhost:3001/api/healthz
 **Terminal 2 — mobile frontend (`apps/mobile`)**
 
 ```powershell
-pnpm dev:mobile
+pnpm dev:mobile:go
 ```
 
-Expo starts its development server and displays options to launch Android, iOS, web, or Expo Go. Sign in through Clerk; the mobile app automatically passes the session token to the backend and loads the student profile and course catalogue.
+This command starts Expo Go and clears its cache. Scan the QR code with the current Expo Go app. Sign in through Clerk; the mobile app automatically passes the session token to the backend and loads the student profile and course catalogue.
+
+If Expo displays **“Clerk setup required”**, `apps/mobile/.env` is missing or still contains the placeholder key. Add the real `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` from Clerk Dashboard > Developers > API Keys, stop Expo, and run `pnpm dev:mobile:go` again.
 
 ## Development commands
 
@@ -96,6 +98,7 @@ All commands in this table run from the **repository root** unless stated otherw
 | --- | --- | --- |
 | `pnpm dev:backend` | `apps/api` | Start the Express backend with file watching. |
 | `pnpm dev:mobile` | `apps/mobile` | Start Expo for the mobile frontend. |
+| `pnpm dev:mobile:go` | `apps/mobile` | Start Expo Go and clear its development cache. |
 | `pnpm dev:web-preview` | `apps/web-preview` | Start the optional Vite preview tool. |
 | `pnpm --filter @stem-smartstudy/db push` | `packages/db` | Apply the Drizzle schema to `DATABASE_URL`. |
 | `pnpm --filter @stem-smartstudy/db seed` | `packages/db` | Seed or refresh the course catalogue. |
@@ -126,3 +129,4 @@ pnpm --filter @stem-smartstudy/api start
 - `.env` files are ignored by Git. Only the `.env.example` templates are committed.
 - Never place Clerk secret keys in `apps/mobile/.env`; only `EXPO_PUBLIC_` values are visible to the mobile application.
 - The backend accepts authenticated mobile requests using Clerk bearer tokens. Restrict `CORS_ORIGIN` for browser deployments.
+- If Expo Go reports a missing native module, update Expo Go from the App Store or Play Store, then restart with `pnpm dev:mobile:go`. The project’s Expo dependencies are validated with `expo install --check`.

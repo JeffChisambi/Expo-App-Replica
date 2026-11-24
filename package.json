@@ -7,6 +7,7 @@
     "dev:backend": "pnpm --filter @stem-smartstudy/api dev",
     "dev:api": "pnpm run dev:backend",
     "dev:mobile": "pnpm --filter @stem-smartstudy/mobile start",
+    "dev:mobile:go": "pnpm --filter @stem-smartstudy/mobile start -- --go --clear",
     "dev:web-preview": "pnpm --filter @stem-smartstudy/web-preview dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
