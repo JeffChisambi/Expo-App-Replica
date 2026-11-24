@@ -1,18 +1,17 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
+  "name": "stem-smartstudy",
+  "version": "1.0.0",
   "packageManager": "pnpm@10.26.1",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "dev:api": "pnpm --filter @stem-smartstudy/api dev",
+    "dev:mobile": "pnpm --filter @stem-smartstudy/mobile start",
+    "dev:web-preview": "pnpm --filter @stem-smartstudy/web-preview dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./apps/**\" --if-present run typecheck"
   },
   "private": true,
-  "dependencies": {
-    "@replit/connectors-sdk": "^0.7.0"
-  },
   "devDependencies": {
     "prettier": "^3.9.10",
     "typescript": "~5.9.3"
