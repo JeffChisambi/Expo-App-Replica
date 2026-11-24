@@ -14,7 +14,12 @@ import {
 } from 'react-native';
 import Svg, { Path, SvgXml } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useGetCourses, type Course as ApiCourse } from '@stem-smartstudy/api-client-react';
+import {
+  useGetCourses,
+  useGetCourseQuestions,
+  type Course as ApiCourse,
+  type Question,
+} from '@stem-smartstudy/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { officialLogoXml } from '@/constants/officialLogo';
 
@@ -28,11 +33,6 @@ const courseIcons: Record<string, IoniconName> = {
   'elementary-principles-of-electricity': 'flash-outline',
   programming: 'code-slash-outline',
   'operating-systems': 'hardware-chip-outline',
-};
-
-const sampleQuestion = {
-  prompt: 'Course questions will appear here once content is available.',
-  options: [] as { key: string; text: string }[],
 };
 
 export default function SmartStudyDashboard() {
@@ -50,6 +50,7 @@ export default function SmartStudyDashboard() {
   const [confidence, setConfidence] = useState<Confidence | null>(null);
   const [sampleNotice, setSampleNotice] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
 
   const topInset =
     Platform.OS === 'web' ? Math.max(67, insets.top) : insets.top;
@@ -60,11 +61,25 @@ export default function SmartStudyDashboard() {
     ...course,
     icon: courseIcons[course.id] ?? 'book-outline',
   }));
+  const selectedCourseRecord = courses.find((course) => course.name === selectedCourse);
+  const questionQuery = useGetCourseQuestions(
+    selectedCourseRecord?.id ?? '',
+    { limit: questionCount },
+    { query: { enabled: false, retry: 1 } },
+  );
 
-  const startQuiz = () => {
-    setSampleNotice(
-      `${selectedCourse} is the active course. Diagnostic questions will be added after its training content is prepared.`,
-    );
+  const startQuiz = async () => {
+    setSampleNotice('Loading course questions…');
+    const result = await questionQuery.refetch();
+    if (result.data?.questions.length) {
+      setQuizQuestions(result.data.questions);
+      setQuizStage('question');
+      setSelectedOption(null);
+      setConfidence(null);
+      setSampleNotice('');
+      return;
+    }
+    setSampleNotice('Questions are unavailable. Confirm the backend and database are running.');
   };
 
   const openQuizSetup = () => {
@@ -192,6 +207,7 @@ export default function SmartStudyDashboard() {
             onSelectCourse={(course) => {
               setSelectedCourse(course);
               setSampleNotice('');
+              setQuizQuestions([]);
             }}
             questionCount={questionCount}
             onQuestionCount={setQuestionCount}
@@ -202,6 +218,8 @@ export default function SmartStudyDashboard() {
             onConfidence={setConfidence}
             sampleNotice={sampleNotice}
             onStart={startQuiz}
+            question={quizQuestions[0]}
+            loadingQuestions={questionQuery.isFetching}
             onSubmit={() => setQuizStage('submitted')}
             onReset={() => {
               setQuizStage('setup');
@@ -523,6 +541,8 @@ function QuizScreen({
   onConfidence,
   sampleNotice,
   onStart,
+  question,
+  loadingQuestions,
   onSubmit,
   onReset,
 }: {
@@ -538,7 +558,9 @@ function QuizScreen({
   confidence: Confidence | null;
   onConfidence: (value: Confidence) => void;
   sampleNotice: string;
-  onStart: () => void;
+  onStart: () => void | Promise<void>;
+  question?: Question;
+  loadingQuestions: boolean;
   onSubmit: () => void;
   onReset: () => void;
 }) {
@@ -560,7 +582,7 @@ function QuizScreen({
             ? 'Your answers, time and confidence help surface difficult topics.'
             : stage === 'question'
               ? 'Choose one answer, then rate how confident you feel.'
-              : 'This sample flow does not send or save an answer.'}
+              : 'Answer the question and rate your confidence.'}
         </Text>
       </View>
 
@@ -652,7 +674,8 @@ function QuizScreen({
           <Pressable
             accessibilityRole="button"
             testID="start-quiz-preview"
-            onPress={onStart}
+            onPress={() => void onStart()}
+            disabled={loadingQuestions}
             style={({ pressed }) => [
               styles.primaryButton,
               { backgroundColor: colors.primary },
@@ -661,11 +684,11 @@ function QuizScreen({
           >
             <Ionicons name="play" size={16} color={colors.white} />
             <Text style={[styles.primaryButtonText, { color: colors.white }]}>
-              Check question availability
+              {loadingQuestions ? 'Loading questions…' : 'Start diagnostic'}
             </Text>
           </Pressable>
           <Text style={[styles.previewFootnote, { color: colors.quiet }]}>
-            Preview only · answers are not saved to a server
+            CEN 1103 question bank · answers will inform topic difficulty.
           </Text>
         </View>
       ) : stage === 'question' ? (
@@ -683,25 +706,26 @@ function QuizScreen({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.questionCourse, { color: colors.ink }]}>
-                {selectedCourse} · Question preview
+                {selectedCourse} · Live question
               </Text>
               <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-                Course questions are not configured yet.
+                {question?.mainTopic ?? 'Loading question'}
               </Text>
             </View>
             <View style={[styles.sampleBadge, { backgroundColor: colors.paleAmber }]}>
               <Text style={[styles.sampleBadgeText, { color: colors.amberInk }]}>
-                SAMPLE
+                {question?.difficulty ?? 'LIVE'}
               </Text>
             </View>
           </View>
 
           <Text style={[styles.questionPrompt, { color: colors.ink }]}>
-            {sampleQuestion.prompt}
+            {question?.questionText ?? 'No question was returned.'}
           </Text>
 
           <View style={styles.answerList}>
-            {sampleQuestion.options.map((option) => {
+            {(question?.options ?? []).map((text, index) => {
+              const option = { key: String.fromCharCode(65 + index), text };
               const selected = selectedOption === option.key;
               return (
                 <Pressable
