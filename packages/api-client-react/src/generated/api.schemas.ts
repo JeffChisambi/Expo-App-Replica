@@ -19,6 +19,16 @@ export interface CourseCatalog {
   courses: Course[];
 }
 
+export interface CourseTopic {
+  topic: string;
+  questionCount: number;
+  subtopics: string[];
+}
+
+export interface CourseTopicCatalog {
+  topics: CourseTopic[];
+}
+
 export interface Question {
   id: string;
   mainTopic: string;
@@ -46,10 +56,31 @@ export interface LearningResponseRequest {
   responses: LearningResponseRequestResponsesItem[];
 }
 
+export type TopicDifficultyEvidenceLevel = typeof TopicDifficultyEvidenceLevel[keyof typeof TopicDifficultyEvidenceLevel];
+
+
+export const TopicDifficultyEvidenceLevel = {
+  insufficient: 'insufficient',
+  preliminary: 'preliminary',
+  established: 'established',
+} as const;
+
 export interface TopicDifficulty {
   topic: string;
   attempts: number;
+  correctAnswers: number;
+  students: number;
   accuracy: number;
+  /** Bayesian-smoothed accuracy using a Beta(2, 2) prior. */
+  posteriorAccuracy: number;
+  accuracyLowerBound: number;
+  accuracyUpperBound: number;
+  /** Conservative topic difficulty based on the upper credible accuracy bound. */
+  difficultyScore: number;
+  /** Difficulty score weighted by the amount of evidence. */
+  recommendationScore: number;
+  evidenceLevel: TopicDifficultyEvidenceLevel;
+  isRecommended: boolean;
 }
 
 export interface TopicDifficultyCatalog {
@@ -62,5 +93,9 @@ export type GetCourseQuestionsParams = {
  * @maximum 50
  */
 limit?: number;
+};
+
+export type GetTopicDifficultyParams = {
+courseId?: string;
 };
 

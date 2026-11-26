@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,13 +16,18 @@ import {
 } from 'react-native';
 import Svg, { Path, SvgXml } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useGetCourses,
   useGetCourseQuestions,
+  useGetCourseTopics,
   useGetTopicDifficulty,
+  getGetTopicDifficultyQueryKey,
   customFetch,
   type Course as ApiCourse,
   type Question,
+  type TopicDifficulty,
+  setAuthToken,
 } from '@stem-smartstudy/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { officialLogoXml } from '@/constants/officialLogo';
@@ -40,6 +47,7 @@ const courseIcons: Record<string, IoniconName> = {
 export default function SmartStudyDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const coursesQuery = useGetCourses({ query: { retry: 1 } });
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedCourse, setSelectedCourse] =
@@ -246,7 +254,13 @@ export default function SmartStudyDashboard() {
                   method: 'POST',
                   body: JSON.stringify({ responses: answers }),
                   responseType: 'json',
-                });
+                })
+                  .then(() =>
+                    queryClient.invalidateQueries({
+                      queryKey: getGetTopicDifficultyQueryKey(),
+                    }),
+                  )
+                  .catch(() => undefined);
                 setQuizStage('submitted');
               }
             }}
@@ -449,10 +463,11 @@ function HomeScreen({
         </Pressable>
       </View>
 
-      <DifficultyExample
+      <TopicDifficultyPreview
         colors={colors}
         courses={courses}
         courseName={selectedCourse}
+        onOpenInsights={onOpenInsights}
       />
 
       <View
@@ -498,6 +513,9 @@ function CoursesScreen({
   selectedCourse: CourseName;
   onSelectCourse: (course: CourseName) => void;
 }) {
+  const selectedCourseId = courses.find((course) => course.name === selectedCourse)?.id ?? '';
+  const topicsQuery = useGetCourseTopics(selectedCourseId, { query: { retry: 1, enabled: Boolean(selectedCourseId) } });
+  const courseTopics = topicsQuery.data?.topics ?? [];
   return (
     <View style={styles.page}>
       <View style={styles.pageHeading}>
@@ -545,14 +563,20 @@ function CoursesScreen({
               {selectedCourse} topics
             </Text>
             <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-              Topics are provided by each course
+              Explore what you will cover
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.quiet} />
         </View>
-        <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
-          Course topics will appear here when they are available.
-        </Text>
+        {topicsQuery.isPending ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
+        ) : courseTopics.length ? (
+          <View style={styles.topicTags}>
+            {courseTopics.map((item) => <TopicTag key={item.topic} label={item.topic} colors={colors} />)}
+          </View>
+        ) : (
+          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>Topics will be added soon.</Text>
+        )}
       </View>
     </View>
   );
@@ -603,6 +627,9 @@ function QuizScreen({
   onSubmit: () => void;
   onReset: () => void;
 }) {
+  const selectedCourseId = courses.find((course) => course.name === selectedCourse)?.id ?? '';
+  const topicsQuery = useGetCourseTopics(selectedCourseId, { query: { retry: 1, enabled: Boolean(selectedCourseId) } });
+  const courseTopics = topicsQuery.data?.topics ?? [];
   const correctAnswers = quizAnswers.filter((answer) =>
     quizQuestions.find((item) => item.id === answer.questionId)?.correctOption === answer.selectedOption,
   ).length;
@@ -668,9 +695,13 @@ function QuizScreen({
 
           <Text style={[styles.formLabel, { color: colors.ink }]}>Topics</Text>
           <View style={styles.topicTags}>
-          <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>
-            Topics will appear once course content is available.
-          </Text>
+            {topicsQuery.isPending ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : courseTopics.length ? (
+              courseTopics.map((item) => <TopicTag key={item.topic} label={item.topic} colors={colors} />)
+            ) : (
+              <Text style={[styles.topicPlaceholder, { color: colors.softInk }]}>Topics will be added soon.</Text>
+            )}
           </View>
 
           <Text style={[styles.formLabel, { color: colors.ink }]}>
@@ -933,8 +964,56 @@ function InsightsScreen({
   selectedCourse: CourseName;
   onStartQuiz: () => void;
 }) {
-  const topicDifficultyQuery = useGetTopicDifficulty({ query: { retry: 1 } });
+  const selectedCourseId = courses.find((course) => course.name === selectedCourse)?.id;
+  const topicDifficultyQuery = useGetTopicDifficulty(
+    { courseId: selectedCourseId },
+    { query: { retry: 1, enabled: Boolean(selectedCourseId) } },
+  );
   const topics = topicDifficultyQuery.data?.topics ?? [];
+  const [selectedTopic, setSelectedTopic] = useState<TopicDifficulty | null>(null);
+  const recommendedTopics = topics.filter((topic) => topic.isRecommended);
+  const firstRecommendation = recommendedTopics[0];
+  if (selectedTopic) {
+    const incorrectAnswers = selectedTopic.attempts - selectedTopic.correctAnswers;
+    const accuracy = Math.round(selectedTopic.accuracy * 100);
+    const incorrectRate = Math.round((1 - selectedTopic.accuracy) * 100);
+    return (
+      <View style={styles.page}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to topic insights"
+          onPress={() => setSelectedTopic(null)}
+          style={({ pressed }) => [styles.insightBackButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="arrow-back" size={18} color={colors.primary} />
+          <Text style={[styles.insightBackText, { color: colors.primary }]}>All topic insights</Text>
+        </Pressable>
+        <View style={styles.pageHeading}>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>TOPIC DETAILS</Text>
+          <Text style={[styles.title, { color: colors.ink }]}>{selectedTopic.topic}</Text>
+          <Text style={[styles.subtitle, { color: colors.softInk }]}>A clear picture of how students have performed in this topic.</Text>
+        </View>
+        {selectedTopic.attempts ? (
+          <View style={[styles.topicDetailCard, { backgroundColor: colors.card, borderColor: colors.line }]}>
+            <Text style={[styles.topicDetailLead, { color: colors.ink }]}>
+              Students answered questions in this topic incorrectly {incorrectRate}% of the time.
+            </Text>
+            <View style={styles.topicStatGrid}>
+              <TopicStat label="Attempts" value={String(selectedTopic.attempts)} colors={colors} />
+              <TopicStat label="Correct" value={String(selectedTopic.correctAnswers)} colors={colors} />
+              <TopicStat label="Incorrect" value={String(incorrectAnswers)} colors={colors} />
+              <TopicStat label="Accuracy" value={`${accuracy}%`} colors={colors} />
+            </View>
+            <Text style={[styles.topicDetailNote, { color: colors.softInk }]}>These figures are based on completed diagnostics for {selectedCourse}.</Text>
+          </View>
+        ) : (
+          <View style={[styles.topicDetailCard, { backgroundColor: colors.card, borderColor: colors.line }]}>
+            <Text style={[styles.topicDetailLead, { color: colors.ink }]}>There are no completed diagnostic responses for this topic yet.</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
   return (
     <View style={styles.page}>
       <View style={styles.pageHeading}>
@@ -964,7 +1043,7 @@ function InsightsScreen({
               Topic difficulty
             </Text>
             <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
-              Lowest accuracy appears first
+              Topics students commonly find challenging
             </Text>
           </View>
         </View>
@@ -974,13 +1053,20 @@ function InsightsScreen({
         ) : topics.length ? (
           <View style={styles.scaleList}>
             {topics.slice(0, 5).map((topic) => (
-              <View key={topic.topic} style={[styles.scaleRow, { backgroundColor: colors.secondary }]}>
-                <View style={[styles.scaleDot, { backgroundColor: topic.accuracy < 0.5 ? colors.coral : colors.teal }]} />
+              <Pressable
+                key={topic.topic}
+                accessibilityRole="button"
+                accessibilityLabel={`View details for ${topic.topic}`}
+                onPress={() => setSelectedTopic(topic)}
+                style={({ pressed }) => [styles.scaleRow, { backgroundColor: colors.secondary }, pressed && styles.pressed]}
+              >
+                <View style={[styles.scaleDot, { backgroundColor: topic.isRecommended && topic.posteriorAccuracy < 0.5 ? colors.coral : colors.teal }]} />
                 <Text style={[styles.scaleName, { color: colors.ink }]}>{topic.topic}</Text>
-                <Text style={[styles.scaleRange, { color: colors.softInk }]}>
-                  {topic.attempts ? `${Math.round(topic.accuracy * 100)}% accuracy` : 'No attempts yet'}
-                </Text>
-              </View>
+                {topic.isRecommended ? (
+                  <Text style={[styles.scaleRange, { color: colors.softInk }]}>Recommended focus area</Text>
+                ) : null}
+                <Ionicons name="chevron-forward" size={15} color={colors.quiet} />
+              </Pressable>
             ))}
           </View>
         ) : (
@@ -1009,10 +1095,10 @@ function InsightsScreen({
       >
         <Ionicons name="bar-chart-outline" size={20} color={colors.quiet} />
         <Text style={[styles.emptyTitle, { color: colors.ink }]}>
-          {topics.some((topic) => topic.attempts > 0) ? 'Topic data is updating' : 'No diagnostic data yet'}
+          {recommendedTopics.length ? 'Course learning insights' : topics.some((topic) => topic.attempts > 0) ? 'Learning insights are on the way' : 'No diagnostic data yet'}
         </Text>
         <Text style={[styles.emptyCopy, { color: colors.softInk }]}>
-          {topics.some((topic) => topic.attempts > 0) ? 'Keep practicing to improve your weak-topic recommendations.' : 'Complete a diagnostic to see your first recommendation.'}
+          {recommendedTopics.length ? 'Use these insights to decide what to practise next.' : topics.some((topic) => topic.attempts > 0) ? 'Complete more diagnostics to unlock course recommendations.' : 'Complete a diagnostic to help build the first course insights.'}
         </Text>
       </View>
 
@@ -1027,10 +1113,12 @@ function InsightsScreen({
         </View>
         <View style={styles.recommendationBody}>
           <Text style={[styles.recommendationTitle, { color: colors.ink }]}>
-            Your recommendations
+            Where students should focus
           </Text>
           <Text style={[styles.recommendationText, { color: colors.softInk }]}>
-            Complete a diagnostic, then focus your next session on the topics with the lowest accuracy.
+            {firstRecommendation
+              ? `Start with ${firstRecommendation.topic}. It is currently the most useful topic to focus on in this course.`
+              : 'Complete a diagnostic, then focus your next session on topics the course community finds difficult.'}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -1048,47 +1136,199 @@ function InsightsScreen({
   );
 }
 
-function DifficultyExample({
+function TopicStat({
+  label,
+  value,
+  colors,
+}: {
+  label: string;
+  value: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={[styles.topicStat, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.topicStatValue, { color: colors.ink }]}>{value}</Text>
+      <Text style={[styles.topicStatLabel, { color: colors.softInk }]}>{label}</Text>
+    </View>
+  );
+}
+
+function getDifficultyMeta(score: number, colors: ReturnType<typeof useColors>) {
+  const clamped = Math.max(0, Math.min(1, score));
+  if (clamped >= 0.7) {
+    return {
+      label: 'Difficult',
+      color: colors.coral,
+      surface: colors.paleCoral,
+      score: clamped,
+    };
+  }
+  if (clamped >= 0.4) {
+    return {
+      label: 'Moderate',
+      color: colors.amberInk,
+      surface: colors.paleAmber,
+      score: clamped,
+    };
+  }
+  return {
+    label: 'Easy',
+    color: colors.teal,
+    surface: colors.paleTeal,
+    score: clamped,
+  };
+}
+
+function TopicDifficultyPreview({
   colors,
   courses,
   courseName,
+  onOpenInsights,
   compact = false,
 }: {
   colors: ReturnType<typeof useColors>;
   courses: Course[];
   courseName: CourseName;
+  onOpenInsights: () => void;
   compact?: boolean;
 }) {
-  const courseIcon = courses.find((course) => course.name === courseName)?.icon;
+  const selectedCourse = courses.find((course) => course.name === courseName);
+  const courseIcon = selectedCourse?.icon;
+  const topicDifficultyQuery = useGetTopicDifficulty(
+    { courseId: selectedCourse?.id },
+    { query: { retry: 1, enabled: Boolean(selectedCourse?.id) } },
+  );
+  const topics = topicDifficultyQuery.data?.topics ?? [];
+  const featuredTopic =
+    topics.find((item) => item.isRecommended) ??
+    topics.find((item) => item.attempts > 0);
+
+  if (topicDifficultyQuery.isPending) {
+    return (
+      <View
+        style={[
+          styles.difficultyCard,
+          compact && styles.difficultyCardCompact,
+          { borderColor: colors.line, backgroundColor: colors.card },
+        ]}
+      >
+        <View style={styles.difficultyTopic}>
+          <ActivityIndicator color={colors.primary} size="small" />
+          <Text style={[styles.sectionSubtext, { color: colors.softInk, marginTop: 0 }]}>
+            Loading topic insights…
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (topicDifficultyQuery.isError) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        testID="home-topic-difficulty-retry"
+        onPress={() => void topicDifficultyQuery.refetch()}
+        style={({ pressed }) => [
+          styles.difficultyCard,
+          compact && styles.difficultyCardCompact,
+          { borderColor: colors.line, backgroundColor: colors.card },
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={[styles.difficultyName, { color: colors.ink }]}>
+          Topic insights unavailable
+        </Text>
+        <Text style={[styles.exampleCaption, { color: colors.primary }]}>
+          Tap to try loading insights again.
+        </Text>
+      </Pressable>
+    );
+  }
+
+  if (!featuredTopic) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        testID="home-topic-difficulty-empty"
+        onPress={onOpenInsights}
+        style={({ pressed }) => [
+          styles.difficultyCard,
+          compact && styles.difficultyCardCompact,
+          { borderColor: colors.line, backgroundColor: colors.card },
+          pressed && styles.pressed,
+        ]}
+      >
+        <View style={styles.difficultyTop}>
+          <View style={styles.difficultyTopic}>
+            <View style={[styles.topicIcon, { backgroundColor: colors.paleBlue }]}>
+              <Ionicons
+                name={courseIcon ?? 'book-outline'}
+                size={17}
+                color={colors.primary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.difficultyName, { color: colors.ink }]}>
+                No diagnostic data yet
+              </Text>
+              <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
+                {courseName}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <Text style={[styles.exampleCaption, { color: colors.quiet }]}>
+          Complete a diagnostic quiz to measure topic difficulty from real responses.
+        </Text>
+      </Pressable>
+    );
+  }
+
+  const difficulty = getDifficultyMeta(featuredTopic.difficultyScore, colors);
+  const accuracyPercent = Math.round(featuredTopic.accuracy * 100);
+  const evidenceLabel =
+    featuredTopic.evidenceLevel === 'established'
+      ? 'Established insight'
+      : featuredTopic.evidenceLevel === 'preliminary'
+        ? 'Preliminary insight'
+        : 'Early insight';
+  const attemptsLabel = `${featuredTopic.attempts} ${
+    featuredTopic.attempts === 1 ? 'attempt' : 'attempts'
+  }`;
+
   return (
-    <View
-      style={[
+    <Pressable
+      accessibilityRole="button"
+      testID="home-topic-difficulty-card"
+      onPress={onOpenInsights}
+      style={({ pressed }) => [
         styles.difficultyCard,
         compact && styles.difficultyCardCompact,
         { borderColor: colors.line, backgroundColor: colors.card },
+        pressed && styles.pressed,
       ]}
     >
       <View style={styles.difficultyTop}>
         <View style={styles.difficultyTopic}>
-          <View style={[styles.topicIcon, { backgroundColor: colors.paleAmber }]}>
+          <View style={[styles.topicIcon, { backgroundColor: difficulty.surface }]}>
             <Ionicons
               name={courseIcon ?? 'book-outline'}
               size={17}
-              color={colors.primary}
+              color={difficulty.color}
             />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.difficultyName, { color: colors.ink }]}>
-              Example topic
+              {featuredTopic.topic}
             </Text>
             <Text style={[styles.sectionSubtext, { color: colors.softInk }]}>
               {courseName}
             </Text>
           </View>
         </View>
-        <View style={[styles.difficultBadge, { backgroundColor: colors.paleCoral }]}>
-          <Text style={[styles.difficultBadgeText, { color: colors.coral }]}>
-            Difficult
+        <View style={[styles.difficultBadge, { backgroundColor: difficulty.surface }]}>
+          <Text style={[styles.difficultBadgeText, { color: difficulty.color }]}>
+            {difficulty.label}
           </Text>
         </View>
       </View>
@@ -1097,16 +1337,21 @@ function DifficultyExample({
           <View
             style={[
               styles.scoreFill,
-              { backgroundColor: colors.amber, width: '78%' },
+              {
+                backgroundColor: difficulty.color,
+                width: `${Math.round(difficulty.score * 100)}%`,
+              },
             ]}
           />
         </View>
-        <Text style={[styles.scoreValue, { color: colors.ink }]}>0.78</Text>
+        <Text style={[styles.scoreValue, { color: colors.ink }]}>
+          {difficulty.score.toFixed(2)}
+        </Text>
       </View>
       <Text style={[styles.exampleCaption, { color: colors.quiet }]}>
-        Contract example · not measured student data
+        {`${evidenceLabel} · ${attemptsLabel} · ${accuracyPercent}% accuracy`}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1512,6 +1757,15 @@ function ProfileModal({
   colors: ReturnType<typeof useColors>;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+  const signOut = async () => {
+    setSigningOut(true);
+    await AsyncStorage.removeItem('session-token');
+    setAuthToken(null);
+    onClose();
+    router.replace('/(auth)');
+  };
   return (
     <Modal
       visible={visible}
@@ -1558,6 +1812,32 @@ function ProfileModal({
             <Text style={[styles.roleBadgeText, { color: colors.teal }]}>
               STUDENT
             </Text>
+          </View>
+          <View style={[styles.profileSettings, { borderTopColor: colors.line }]}>
+            <Text style={[styles.profileSettingsTitle, { color: colors.ink }]}>Settings</Text>
+            <View style={[styles.profileSettingRow, { backgroundColor: colors.secondary }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.profileSettingTitle, { color: colors.ink }]}>Account privacy</Text>
+                <Text style={[styles.profileSettingCopy, { color: colors.softInk }]}>Your study profile stays separate from other students.</Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Log out"
+              testID="profile-sign-out"
+              disabled={signingOut}
+              onPress={() => void signOut()}
+              style={({ pressed }) => [
+                styles.signOutButton,
+                { backgroundColor: colors.paleCoral },
+                pressed && styles.pressed,
+                signingOut && styles.disabledButton,
+              ]}
+            >
+              <Ionicons name="log-out-outline" size={18} color={colors.coral} />
+              <Text style={[styles.signOutText, { color: colors.coral }]}>{signingOut ? 'Logging out…' : 'Log out'}</Text>
+            </Pressable>
           </View>
         </Pressable>
       </Pressable>
@@ -1768,9 +2048,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   difficultyTopic: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
+    marginRight: 10,
   },
   topicIcon: {
     width: 37,
@@ -2186,6 +2468,56 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 14,
   },
+  insightBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginBottom: 16,
+  },
+  insightBackText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+  },
+  topicDetailCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+  },
+  topicDetailLead: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  topicStatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+  },
+  topicStat: {
+    width: '47%',
+    minHeight: 76,
+    borderRadius: 14,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  topicStatValue: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 20,
+    lineHeight: 25,
+  },
+  topicStatLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  topicDetailNote: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 16,
+  },
   insightHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2326,6 +2658,37 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: 9,
     letterSpacing: 0.7,
+  },
+  profileSettings: {
+    width: '100%',
+    borderTopWidth: 1,
+    marginTop: 19,
+    paddingTop: 16,
+  },
+  profileSettingsTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    marginBottom: 9,
+  },
+  profileSettingRow: {
+    width: '100%',
+    minHeight: 62,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  profileSettingTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+  },
+  profileSettingCopy: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 2,
   },
   signOutButton: {
     width: '100%',

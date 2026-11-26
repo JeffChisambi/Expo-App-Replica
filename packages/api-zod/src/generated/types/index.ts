@@ -8,7 +8,10 @@
 
 export * from './course';
 export * from './courseCatalog';
+export * from './courseTopic';
+export * from './courseTopicCatalog';
 export * from './getCourseQuestionsParams';
+export * from './getTopicDifficultyParams';
 export * from './healthStatus';
 export * from './learningResponseRequest';
 export * from './learningResponseRequestResponsesItem';
@@ -16,3 +19,4 @@ export * from './question';
 export * from './questionCatalog';
 export * from './topicDifficulty';
 export * from './topicDifficultyCatalog';
+export * from './topicDifficultyEvidenceLevel';

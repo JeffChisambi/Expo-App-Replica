@@ -52,6 +52,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/QuestionCatalog"
+  /courses/{courseId}/topics:
+    get:
+      operationId: getCourseTopics
+      summary: List the topics and subtopics available in a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course topic catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseTopicCatalog"
   /learning/responses:
     post:
       operationId: recordLearningResponses
@@ -68,7 +85,13 @@ paths:
   /learning/topic-difficulty:
     get:
       operationId: getTopicDifficulty
-      summary: Rank topics using anonymized response accuracy
+      summary: Rank course topics using uncertainty-aware anonymized response data
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Topic difficulty ranking
@@ -102,6 +125,26 @@ components:
           items:
             $ref: "#/components/schemas/Course"
       required: [courses]
+    CourseTopic:
+      type: object
+      properties:
+        topic:
+          type: string
+        questionCount:
+          type: integer
+        subtopics:
+          type: array
+          items:
+            type: string
+      required: [topic, questionCount, subtopics]
+    CourseTopicCatalog:
+      type: object
+      properties:
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTopic"
+      required: [topics]
     Question:
       type: object
       properties:
@@ -159,9 +202,31 @@ components:
           type: string
         attempts:
           type: integer
+        correctAnswers:
+          type: integer
+        students:
+          type: integer
         accuracy:
           type: number
-      required: [topic, attempts, accuracy]
+        posteriorAccuracy:
+          type: number
+          description: Bayesian-smoothed accuracy using a Beta(2, 2) prior.
+        accuracyLowerBound:
+          type: number
+        accuracyUpperBound:
+          type: number
+        difficultyScore:
+          type: number
+          description: Conservative topic difficulty based on the upper credible accuracy bound.
+        recommendationScore:
+          type: number
+          description: Difficulty score weighted by the amount of evidence.
+        evidenceLevel:
+          type: string
+          enum: [insufficient, preliminary, established]
+        isRecommended:
+          type: boolean
+      required: [topic, attempts, correctAnswers, students, accuracy, posteriorAccuracy, accuracyLowerBound, accuracyUpperBound, difficultyScore, recommendationScore, evidenceLevel, isRecommended]
     TopicDifficultyCatalog:
       type: object
       properties:

@@ -61,6 +61,22 @@ export const GetCourseQuestionsResponse = zod.object({
 
 
 /**
+ * @summary List the topics and subtopics available in a course
+ */
+export const GetCourseTopicsParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const GetCourseTopicsResponse = zod.object({
+  "topics": zod.array(zod.object({
+  "topic": zod.string(),
+  "questionCount": zod.int(),
+  "subtopics": zod.array(zod.string())
+}))
+})
+
+
+/**
  * @summary Record anonymous diagnostic responses
  */
 export const RecordLearningResponsesBody = zod.object({
@@ -75,13 +91,26 @@ export const RecordLearningResponsesResponse = zod.void()
 
 
 /**
- * @summary Rank topics using anonymized response accuracy
+ * @summary Rank course topics using uncertainty-aware anonymized response data
  */
+export const GetTopicDifficultyQueryParams = zod.object({
+  "courseId": zod.coerce.string().optional()
+})
+
 export const GetTopicDifficultyResponse = zod.object({
   "topics": zod.array(zod.object({
   "topic": zod.string(),
   "attempts": zod.int(),
-  "accuracy": zod.number()
+  "correctAnswers": zod.int(),
+  "students": zod.int(),
+  "accuracy": zod.number(),
+  "posteriorAccuracy": zod.number().describe('Bayesian-smoothed accuracy using a Beta(2, 2) prior.'),
+  "accuracyLowerBound": zod.number(),
+  "accuracyUpperBound": zod.number(),
+  "difficultyScore": zod.number().describe('Conservative topic difficulty based on the upper credible accuracy bound.'),
+  "recommendationScore": zod.number().describe('Difficulty score weighted by the amount of evidence.'),
+  "evidenceLevel": zod.enum(['insufficient', 'preliminary', 'established']),
+  "isRecommended": zod.boolean()
 }))
 })
 

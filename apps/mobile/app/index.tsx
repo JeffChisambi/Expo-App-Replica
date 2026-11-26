@@ -8,5 +8,5 @@ export default function IndexRoute() {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => { void AsyncStorage.getItem('session-token').then((token) => { setAuthToken(token); setSignedIn(Boolean(token)); setReady(true); }); }, []);
   if (!ready) return null;
-  return <Redirect href={signedIn ? '/(tabs)' : '/(auth)/index'} />;
+  return <Redirect href={signedIn ? '/(tabs)' : '/(auth)'} />;
 }

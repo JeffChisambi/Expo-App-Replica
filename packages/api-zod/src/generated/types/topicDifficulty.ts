@@ -5,9 +5,22 @@
  * STEM SmartStudy local API
  * OpenAPI spec version: 0.1.0
  */
+import type { TopicDifficultyEvidenceLevel } from './topicDifficultyEvidenceLevel';
 
 export interface TopicDifficulty {
   topic: string;
   attempts: number;
+  correctAnswers: number;
+  students: number;
   accuracy: number;
+  /** Bayesian-smoothed accuracy using a Beta(2, 2) prior. */
+  posteriorAccuracy: number;
+  accuracyLowerBound: number;
+  accuracyUpperBound: number;
+  /** Conservative topic difficulty based on the upper credible accuracy bound. */
+  difficultyScore: number;
+  /** Difficulty score weighted by the amount of evidence. */
+  recommendationScore: number;
+  evidenceLevel: TopicDifficultyEvidenceLevel;
+  isRecommended: boolean;
 }
